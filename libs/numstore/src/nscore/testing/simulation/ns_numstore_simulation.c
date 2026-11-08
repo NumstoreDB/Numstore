@@ -419,7 +419,7 @@ nss_write (struct ns_simulation *meta, struct operation *op, error *e)
   // (with stride 1) so every touched element is covered
   b_size span = op->op_write.str.nelems == 0
                     ? 0
-                    : (op->op_write.str.nelems - 1) * op->op_write.str.stride + 1;
+                    : ((op->op_write.str.nelems - 1) * op->op_write.str.stride) + 1;
 
   return nss_validate_after_write (
       meta,
@@ -438,7 +438,7 @@ static void
 format_quoted_str (char *buf, size_t bufsize, const char *str)
 {
   size_t maxlen    = bufsize - 6; /* was -5: off by one, ate the closing quote */
-  size_t len       = strlen (str);
+  size_t len       = strnlen (str, bufsize);
   bool   truncated = len > maxlen;
   snprintf (
       buf,

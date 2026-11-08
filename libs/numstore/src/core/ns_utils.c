@@ -24,7 +24,7 @@ file_basename (const char *path)
   const char *p1 = strrchr (path, '/');
   const char *p2 = strrchr (path, '\\');
   const char *p  = p1 > p2 ? p1 : p2;
-  return p ? p + 1 : path;
+  return (p != NULL) ? p + 1 : path;
 }
 
 #ifndef NDEBUG

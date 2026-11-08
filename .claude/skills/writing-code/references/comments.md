@@ -40,7 +40,7 @@ Where comments go
   a short marker comment, so the function can stay in one piece. See
   [simplicity-and-functions.md](simplicity-and-functions.md).
 - Tests get a comment saying what property they check, and long ones get
-  Setup / Run / Teardown markers. 
+  Setup / Run / Teardown markers.
 
 Good comments
 =============

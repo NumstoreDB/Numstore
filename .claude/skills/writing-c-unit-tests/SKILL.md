@@ -8,7 +8,7 @@ Writing C tests in Numstore
 
 General principles (grouping, parameterization, simulation, regressions)
 are in [what-makes-a-good-test.md](references/what-makes-a-good-test.md).
-This file is how they map onto this codebase. 
+This file is how they map onto this codebase.
 
 For functions that can fail on OS or memory errors, also read
 [error-tests.md](references/error-tests.md). Style for the test code itself

@@ -155,6 +155,8 @@ page_h_xfer_ownership (page_h *h)
   return ret;
 }
 
+// Valid only while h is held. The pointer dangles once h is released or
+// cancelled, so don't keep it past pgr_release / pgr_cancel.
 HEADER_FUNC const page *
 page_h_r (const page_h *h)
 {
@@ -166,6 +168,7 @@ page_h_r (const page_h *h)
   return &h->pgr->page;
 }
 
+// Valid only while h is held in PHM_X. Same lifetime as page_h_r.
 HEADER_FUNC page *
 page_h_w (const page_h *h)
 {
@@ -177,6 +180,7 @@ page_h_w (const page_h *h)
   return &h->pgw->page;
 }
 
+// NULL when h holds nothing. Otherwise valid only while h is held.
 HEADER_FUNC page *
 page_h_w_or_null (const page_h *h)
 {
@@ -191,6 +195,7 @@ page_h_w_or_null (const page_h *h)
   return &h->pgw->page;
 }
 
+// Valid only while h is held, in either mode. Same lifetime as page_h_r.
 HEADER_FUNC const page *
 page_h_ro (const page_h *h)
 {
@@ -206,6 +211,7 @@ page_h_ro (const page_h *h)
   UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
+// NULL when h holds nothing. Otherwise valid only while h is held.
 HEADER_FUNC const page *
 page_h_ro_or_null (const page_h *h)
 {

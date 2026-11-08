@@ -14,9 +14,11 @@
 
 #include "core/ns_bounds.h"
 #include "core/ns_error.h"
+#include "core/ns_testing.h"
 #include "nscore/algorithms/numstore/ns_numstore_algorithms.h"
 #include "nscore/algorithms/rope/ns_rope_algorithms.h"
 #include "nscore/algorithms/var/ns_var_algorithms.h"
+#include "nscore/page/ns_page_fixture.h"
 
 err_t
 numstore_remove_malloc (
@@ -118,3 +120,74 @@ numstore_remove_malloc (
 
   return SUCCESS;
 }
+
+#ifndef NDEBUG
+TEST (numstore_remove_malloc_fail_mem)
+{
+  int   fail_after = 0;
+  err_t ret;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+
+      // Setup - a variable with 10 elements, on a healthy allocator
+      struct pgr_fixture f;
+      pgr_fixture_create (&f, &ctx->e);
+      numstore_init_pager (f.p, &ctx->e);
+      pgr_begin_txn (&f.tx, f.p, &ctx->e);
+
+      struct variable var;
+      numstore_create (f.p, &f.tx, strfcstr ("var"), TU32, &ctx->alloc, &var, &ctx->e);
+      u32 data[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+      istream_create_from_array (src, data);
+      numstore_insert_from_name (
+          f.p,
+          &f.tx,
+          strfcstr ("var"),
+          0,
+          10,
+          &ctx->alloc,
+          &var,
+          &src,
+          &ctx->e
+      );
+
+      // Run - only the output buffer comes from the faulty allocator
+      void  *buf  = NULL;
+      b_size dlen = 0;
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = numstore_remove_malloc (
+          f.p,
+          &f.tx,
+          &var,
+          USER_STRIDE_ALL,
+          &buf,
+          &dlen,
+          ctx->faulty_mem,
+          &ctx->e
+      );
+      faulty_mem_reset (ctx->faulty_mem);
+
+      if (ret == SUCCESS) {
+        test_assert_type_equal (dlen, (b_size)(10 * sizeof (u32)), b_size, PRb_size);
+        ctx->faulty_mem.table->free (ctx->faulty_mem.self, buf);
+      } else {
+        // A failed allocation leaves the variable alone
+        test_assert_int_equal (ctx->e.cause_code, ERR_NOMEM);
+        test_assert_type_equal (var.nbytes, (b_size)(10 * sizeof (u32)), b_size, PRb_size);
+        error_reset (&ctx->e);
+      }
+
+      // Teardown
+      pgr_commit (f.p, &f.tx, &ctx->e);
+      pgr_fixture_teardown (&f, &ctx->e);
+      arena_alloc_free_all (&ctx->alloc);
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+}
+#endif

@@ -659,7 +659,7 @@ TEST (arena_alloc_copy)
     arena_alloc_create_default_with (&a, ctx->mem);
 
     const char *src = "the quick brown fox";
-    char       *dst = arena_alloc_copy (&a, src, (u32)strlen (src) + 1, &ctx->e);
+    char       *dst = arena_alloc_copy (&a, src, (u32)strnlen (src, 4096) + 1, &ctx->e);
     test_assert (dst != NULL);
     test_assert (dst != src);
     test_assert_int_equal (strcmp (dst, src), 0);

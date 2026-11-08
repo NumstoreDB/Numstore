@@ -60,7 +60,7 @@ static const struct os_vtable default_os_vtable;
 static bool
 fd_is_open (const int fd)
 {
-  return fcntl (fd, F_GETFD) != -1 || errno != EBADF;
+  return (fcntl (fd, F_GETFD) != -1) || (errno != EBADF);
 }
 #  endif
 
@@ -609,7 +609,7 @@ static void
 sys_thread_join (void *os_self, void *t)
 {
   struct posix_os *os     = os_self;
-  pthread_t       *thread = t;
+  pthread_t       *thread = (pthread_t *)t;
   ASSERT (os);
   DBG_ASSERT (thread, thread);
 

@@ -167,4 +167,4 @@ When changing recovery code
    `testing/regressions/`, fail_after sweeps (see
    [writing-c-unit-tests](../writing-c-unit-tests/SKILL.md) and
    [error-tests.md](../writing-c-unit-tests/references/error-tests.md)), and
-   `make test-simtest`. 
+   `make test-simtest`.

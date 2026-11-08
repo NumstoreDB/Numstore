@@ -629,7 +629,7 @@ random_stress_worker (void *arg)
 
   for (int i = 0; i < 1000; i++) {
     // Fast thread-local random
-    seed                = seed * 1103515245 + 12345;
+    seed                = (seed * 1103515245) + 12345;
     enum lock_mode mode = (seed % LM_COUNT);
 
     gr_lock (ctx->lock, mode, &e);

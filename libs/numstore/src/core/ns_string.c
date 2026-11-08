@@ -27,7 +27,7 @@
 struct string
 strfcstr (const char *cstr)
 {
-  return (struct string){.data = cstr, .len = strlen (cstr)};
+  return (struct string){.data = cstr, .len = (u32)strnlen (cstr, U32_MAX)};
 }
 
 u64

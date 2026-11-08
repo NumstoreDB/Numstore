@@ -842,7 +842,7 @@ pyns_ns_to_np (PyObject *Py_UNUSED (m), PyObject *arg)
 
   // Extract utf8 string from argument
   const char    *src = PyUnicode_AsUTF8 (arg);
-  if (!src) {
+  if (src == NULL) {
     goto theend;
   }
 
@@ -928,7 +928,7 @@ pyns_open (PyObject *Py_UNUSED (m), PyObject *arg)
 
   // Get the path as a utf8 string
   const char *path = PyUnicode_AsUTF8 (arg);
-  if (!path) {
+  if (path == NULL) {
     return NULL;
   }
 

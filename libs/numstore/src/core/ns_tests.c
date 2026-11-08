@@ -12,6 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
+#include "core/ns_bounds.h"
 #include "core/ns_cbuffer.h"
 #include "core/ns_error.h"
 #include "core/ns_ext_array.h" // ext_array
@@ -748,6 +749,45 @@ TEST (cbuffer_cbuffer_move_transfers_bytes)
     // Request 4 but only 2 available
     const u32 moved = cbuffer_cbuffer_move (&dst, 1, 4, &src);
     test_assert_int_equal ((int)moved, 2);
+  }
+}
+
+TEST (bounds_err_helpers_overflow)
+{
+  TEST_CASE ("safe_add_u64_err")
+  {
+    u64 v = 0;
+    test_assert_int_equal (safe_add_u64_err (&v, 5, 6, &ctx->e), SUCCESS);
+    test_assert_type_equal (v, (u64)11, u64, PRIu64);
+
+    test_err_t_check (safe_add_u64_err (&v, U64_MAX, 1, &ctx->e), ERR_ARITH, &ctx->e);
+  }
+
+  TEST_CASE ("safe_add_u16_err")
+  {
+    u16 v = 10;
+    test_assert_int_equal (safe_add_u16_err (&v, 5, &ctx->e), SUCCESS);
+    test_assert_type_equal (v, (u16)15, u16, PRIu16);
+
+    // Landing exactly on the max is fine, one past is not
+    test_assert_int_equal (safe_add_u16_err (&v, (u16)(UINT16_MAX - 15), &ctx->e), SUCCESS);
+    test_assert_type_equal (v, (u16)UINT16_MAX, u16, PRIu16);
+    test_err_t_check (safe_add_u16_err (&v, 1, &ctx->e), ERR_ARITH, &ctx->e);
+    test_assert_type_equal (v, (u16)UINT16_MAX, u16, PRIu16);
+  }
+
+  TEST_CASE ("safe_add_mul_u16_err")
+  {
+    u16 v = 1;
+    test_assert_int_equal (safe_add_mul_u16_err (&v, 3, 4, &ctx->e), SUCCESS);
+    test_assert_type_equal (v, (u16)13, u16, PRIu16);
+
+    // The product alone overflows
+    test_err_t_check (safe_add_mul_u16_err (&v, 256, 256, &ctx->e), ERR_ARITH, &ctx->e);
+
+    // The product fits but the sum doesn't
+    v = UINT16_MAX;
+    test_err_t_check (safe_add_mul_u16_err (&v, 1, 1, &ctx->e), ERR_ARITH, &ctx->e);
   }
 }
 

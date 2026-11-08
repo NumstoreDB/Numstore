@@ -582,7 +582,11 @@ TEST (parse_i32_expect)
   test_assert_int_equal (out, -56);
 
   const char *big = "999999999999999999999999999999999999999999";
-  test_err_t_check (parse_i32_expect (&out, big, (u32)strlen (big), &ctx->e), ERR_ARITH, &ctx->e);
+  test_err_t_check (
+      parse_i32_expect (&out, big, (u32)strnlen (big, 4096), &ctx->e),
+      ERR_ARITH,
+      &ctx->e
+  );
 }
 #endif
 
@@ -727,12 +731,18 @@ TEST (parse_f32_expect)
 
   // 40 integer digits overflow f32 before the exponent is reached
   const char *big = "1000000000000000000000000000000000000000";
-  test_assert_int_equal (parse_f32_expect (&out, big, (u32)strlen (big), &ctx->e), ERR_ARITH);
+  test_assert_int_equal (
+      parse_f32_expect (&out, big, (u32)strnlen (big, 4096), &ctx->e),
+      ERR_ARITH
+  );
   error_reset (&ctx->e);
 
   // 40 fractional digits overflow the f32 scale factor
   const char *tiny = ".0000000000000000000000000000000000000001";
-  test_assert_int_equal (parse_f32_expect (&out, tiny, (u32)strlen (tiny), &ctx->e), ERR_ARITH);
+  test_assert_int_equal (
+      parse_f32_expect (&out, tiny, (u32)strnlen (tiny, 4096), &ctx->e),
+      ERR_ARITH
+  );
   error_reset (&ctx->e);
 }
 #endif

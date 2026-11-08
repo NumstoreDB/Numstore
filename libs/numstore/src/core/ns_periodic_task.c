@@ -48,7 +48,8 @@ periodic_task_thread (void *_ctx)
 
   while (true) {
     t->mutex.table->mutex_lock (t->mutex.self);
-    // TODO - spurrious wakeups
+    // TODO: a spurious wakeup from cond_timed_wait runs the task early, since
+    // the loop doesn't re-check elapsed time. Harmless for idempotent tasks.
     if (!t->wake_requested && !t->stop) {
       t->wake_cond.table->cond_timed_wait (t->wake_cond.self, t->mutex.self, t->msec);
     }

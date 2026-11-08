@@ -13,6 +13,7 @@
 /// limitations under the License.
 
 #include "core/ns_error.h"
+#include "core/ns_testing.h"
 #include "nscore/dpg_table/ns_dirty_page_table.h"
 #include "nscore/lock_table/ns_lock_table.h"
 #include "nscore/pager/ns_pager.h"
@@ -76,3 +77,68 @@ aries_ctx_txn_alloc (struct aries_ctx *ctx, error *e)
 
   return tx;
 }
+
+#ifndef NDEBUG
+TEST (aries_ctx_create_fail_mem)
+{
+  int   fail_after = 0;
+  err_t ret;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+
+      // Run
+      struct aries_ctx actx;
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = aries_ctx_create (&actx, ctx->faulty_mem, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      // Teardown - a failed create cleans up after itself
+      if (ret == SUCCESS) {
+        aries_ctx_free (&actx);
+      } else {
+        test_assert_int_equal (ctx->e.cause_code, ERR_NOMEM);
+        error_reset (&ctx->e);
+      }
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+}
+
+TEST (aries_ctx_txn_alloc_fail_mem)
+{
+  // Setup
+  struct aries_ctx actx;
+  test_assert_int_equal (aries_ctx_create (&actx, ctx->faulty_mem, &ctx->e), SUCCESS);
+
+  int         fail_after = 0;
+  struct txn *tx;
+
+  do {
+    TEST_CASE ("Fail after: %d", fail_after)
+    {
+      error_reset (&ctx->e);
+
+      // Run
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      tx = aries_ctx_txn_alloc (&actx, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      if (tx == NULL) {
+        test_assert_int_equal (ctx->e.cause_code, ERR_NOMEM);
+        error_reset (&ctx->e);
+      }
+
+      fail_after++;
+    }
+  }
+  while (tx == NULL);
+
+  // Teardown
+  aries_ctx_free (&actx);
+}
+#endif

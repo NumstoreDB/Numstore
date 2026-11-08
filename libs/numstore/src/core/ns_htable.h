@@ -61,7 +61,8 @@ u32 fnv1a_hash (struct string s);
  *
  * This hash table uses intrusive data structures to keep track of nodes
  *
- * TODO usage
+ * TODO: add a usage example (embed an llnode in the user struct, then
+ * container_of back to it) so callers don't have to read the tests.
  ******************************************************************************/
 
 struct hnode

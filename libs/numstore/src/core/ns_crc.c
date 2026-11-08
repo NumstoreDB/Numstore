@@ -356,7 +356,7 @@ TEST (crc_sw_matches_bitwise_oracle_at_every_length)
 
   u8 buf[40];
   for (u32 i = 0; i < arrlen (buf); ++i) {
-    buf[i] = (u8)(i * 7U + 1U);
+    buf[i] = (u8)((i * 7U) + 1U);
   }
 
   for (u32 len = 0; len <= arrlen (buf); ++len) {
@@ -406,7 +406,7 @@ TEST (crc_sw_is_resumable_at_every_split)
 
   u8 buf[24];
   for (u32 i = 0; i < arrlen (buf); ++i) {
-    buf[i] = (u8)(i * 31U + 5U);
+    buf[i] = (u8)((i * 31U) + 5U);
   }
 
   const u32 whole = crc_sw (0xFFFFFFFFU, buf, arrlen (buf));
@@ -426,15 +426,15 @@ TEST (crc_sw_agrees_with_checksum_execute)
   crc_tables_ready ();
 
   // Spans the hardware path's 3 * CRC_K == 3072 byte block, plus a remainder
-  const u32 len = 3 * CRC_K + 77;
+  const u32 len = (3 * CRC_K) + 77;
   u8       *buf = ctx->mem.table->malloc (ctx->mem.self, len, 1, &ctx->e);
   test_assert (buf != NULL);
 
   for (u32 i = 0; i < len; ++i) {
-    buf[i] = (u8)(i * 13U + (i >> 5));
+    buf[i] = (u8)((i * 13U) + (i >> 5));
   }
 
-  const u32 lens[] = {0, 1, 7, 8, 9, 63, 64, 1024, 3071, 3072, 3073, 3 * CRC_K + 77};
+  const u32 lens[] = {0, 1, 7, 8, 9, 63, 64, 1024, 3071, 3072, 3073, (3 * CRC_K) + 77};
 
   for (u32 i = 0; i < arrlen (lens); ++i) {
     TEST_CASE ("len=%" PRIu32, lens[i])

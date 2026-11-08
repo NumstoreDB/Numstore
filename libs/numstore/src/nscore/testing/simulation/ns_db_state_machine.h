@@ -21,6 +21,12 @@
 #include "core/os/ns_malloc.h"
 #include "core/os/ns_os.h"
 #include "nscore/algorithms/var/ns_var_algorithms.h"
+#include "nscore/page/ns_page.h"
+
+// The longest variable name the simulation generates (see
+// get_random_name_len in ns_operation_generator.c). Bounds strnlen on names; a
+// platform path limit is far too small.
+#define SIM_VNAME_MAX (10 * NS_PAGE_SIZE)
 
 /**
  * A database stepper is a little state machine that

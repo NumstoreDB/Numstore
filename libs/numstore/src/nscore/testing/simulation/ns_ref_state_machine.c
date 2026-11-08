@@ -32,9 +32,8 @@ ns_ref_cur (struct ns_ref *ref)
 {
   if (ref->in_txn) {
     return ref->working;
-  } else {
-    return ref->committed;
   }
+  return ref->committed;
 }
 
 // DB STATE
@@ -69,7 +68,7 @@ db_state_free (struct db_state *db)
   mem.table->free (mem.self, db);
 }
 
-struct db_state *
+static struct db_state *
 db_state_clone (struct i_mem mem, struct db_state *state, error *e)
 {
   struct db_state *ret = db_state_create (mem, e);

@@ -410,7 +410,7 @@ TEST (rand_varname)
     test_assert_int_equal (ret, SUCCESS);
     test_assert (name.len >= 5 && name.len <= 10);
     test_assert (test_char_in_pool (name.data[0], alpha_pool, sizeof (alpha_pool) - 1));
-    test_assert_int_equal (name.data[name.len - 1], '\0');
+    test_assert_int_equal ((u8)name.data[name.len - 1], '\0');
   }
 
   arena_alloc_free_all (&ctx->alloc);

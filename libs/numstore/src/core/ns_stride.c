@@ -28,6 +28,7 @@ stride_resolve_expect (struct stride *dest, const struct user_stride src, const 
   const i64 step = (src.present & STEP_PRESENT) ? src.step : 1;
 
   ASSERT (step > 0);
+  ASSERT (arrlen <= (u64)I64_MAX);
 
   if (arrlen == 0) {
     dest->start  = 0;
@@ -50,7 +51,7 @@ stride_resolve_expect (struct stride *dest, const struct user_stride src, const 
       start = 0;
     }
     if (start > (i64)arrlen) {
-      start = arrlen;
+      start = (i64)arrlen;
     }
   } else {
     start = 0;
@@ -67,7 +68,7 @@ stride_resolve_expect (struct stride *dest, const struct user_stride src, const 
       stop = 0;
     }
     if (stop > (i64)arrlen) {
-      stop = arrlen;
+      stop = (i64)arrlen;
     }
   } else if (!(src.present & COLON_PRESENT) && (src.present & START_PRESENT)) {
     // No colon and a start: this is a bare index ("[2]"), which selects exactly
@@ -75,10 +76,10 @@ stride_resolve_expect (struct stride *dest, const struct user_stride src, const 
     // "[2]" would silently mean "[2:]".
     stop = start + 1;
     if (stop > (i64)arrlen) {
-      stop = arrlen;
+      stop = (i64)arrlen;
     }
   } else {
-    stop = arrlen;
+    stop = (i64)arrlen;
   }
 
   u64 nelems;

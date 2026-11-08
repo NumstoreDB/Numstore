@@ -105,7 +105,7 @@ static bool
 take_flag (const char *name, int argc, char **argv, int *i, const char **value)
 {
   const char *arg = argv[*i];
-  size_t      len = strlen (name);
+  size_t      len = strnlen (name, 64);
 
   if (strncmp (arg, name, len) != 0) {
     return false;

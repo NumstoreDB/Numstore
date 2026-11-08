@@ -450,8 +450,8 @@ TEST (ns_read_var_page)
 
     test_assert_int_equal (params.matches, true);
     test_assert (var.vname.data != NULL); // save_vname == true, matches == true
-    test_assert_int_equal (var.vname.len, strlen ("mode_x_saves"));
-    test_assert (memcmp (var.vname.data, "mode_x_saves", strlen ("mode_x_saves")) == 0);
+    test_assert_int_equal (var.vname.len, (i32)strnlen ("mode_x_saves", 64));
+    test_assert (memcmp (var.vname.data, "mode_x_saves", strnlen ("mode_x_saves", 64)) == 0);
     test_assert (var.dtype != NULL); // save_type == true, matches == true
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
@@ -737,8 +737,8 @@ TEST (ns_read_var_page)
 
     test_assert_int_equal (params.matches, true); // IMPORTANT
     test_assert (var.vname.data != NULL);         // IMPORTANT (save_vname == true, matches == true)
-    test_assert_int_equal (var.vname.len, strlen ("sv_null"));
-    test_assert (memcmp (var.vname.data, "sv_null", strlen ("sv_null")) == 0);
+    test_assert_int_equal (var.vname.len, (i32)strnlen ("sv_null", 64));
+    test_assert (memcmp (var.vname.data, "sv_null", strnlen ("sv_null", 64)) == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == true
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
@@ -778,8 +778,8 @@ TEST (ns_read_var_page)
 
     test_assert_int_equal (params.matches, true); // IMPORTANT
     test_assert (var.vname.data != NULL);         // IMPORTANT (save_vname == true, matches == true)
-    test_assert_int_equal (var.vname.len, strlen ("sv_eq"));
-    test_assert (memcmp (var.vname.data, "sv_eq", strlen ("sv_eq")) == 0);
+    test_assert_int_equal (var.vname.len, (i32)strnlen ("sv_eq", 64));
+    test_assert (memcmp (var.vname.data, "sv_eq", strnlen ("sv_eq", 64)) == 0);
     test_assert (var.dtype == NULL); // save_type == false, matches == true
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
@@ -1057,8 +1057,8 @@ TEST (ns_read_var_page)
 
     test_assert_int_equal (params.matches, true); // IMPORTANT
     test_assert (var.vname.data != NULL);         // IMPORTANT (save_vname == true, matches == true)
-    test_assert_int_equal (var.vname.len, strlen ("both_null"));
-    test_assert (memcmp (var.vname.data, "both_null", strlen ("both_null")) == 0);
+    test_assert_int_equal (var.vname.len, (i32)strnlen ("both_null", 64));
+    test_assert (memcmp (var.vname.data, "both_null", strnlen ("both_null", 64)) == 0);
     test_assert (var.dtype != NULL); // IMPORTANT (save_type == true, matches == true)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);
@@ -1098,8 +1098,8 @@ TEST (ns_read_var_page)
 
     test_assert_int_equal (params.matches, true); // IMPORTANT
     test_assert (var.vname.data != NULL);         // IMPORTANT (save_vname == true, matches == true)
-    test_assert_int_equal (var.vname.len, strlen ("both_eq"));
-    test_assert (memcmp (var.vname.data, "both_eq", strlen ("both_eq")) == 0);
+    test_assert_int_equal (var.vname.len, (i32)strnlen ("both_eq", 64));
+    test_assert (memcmp (var.vname.data, "both_eq", strnlen ("both_eq", 64)) == 0);
     test_assert (var.dtype != NULL); // IMPORTANT (save_type == true, matches == true)
     test_assert (var.rpt_root == PGNO_NULL);
     test_assert_type_equal (var.nbytes, 0, b_size, PRb_size);

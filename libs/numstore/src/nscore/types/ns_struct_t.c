@@ -237,7 +237,8 @@ struct_t_create (struct struct_t *dest, struct kvt_list list, struct arena_alloc
       return error_trace (e);
     }
 
-    dest->types = arena_alloc_copy (dalloc, list.types, list.len * sizeof *dest->types, e);
+    dest->types = (struct type **)
+        arena_alloc_copy (dalloc, list.types, list.len * sizeof *dest->types, e);
     // TODO: this checks keys again instead of types, so a failed types copy
     // returns SUCCESS with types == NULL
     if (dest->keys == NULL) {
@@ -386,7 +387,7 @@ TEST (struct_t_snprintf)
 
   char       *ret      = type_tostr (&ctx->alloc, &t, &ctx->e);
   i_log_type (&t, &ctx->e);
-  test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
+  test_assert_int_equal (strncmp (expected, ret, strnlen (expected, 4096)), 0);
   arena_alloc_free_all (&ctx->alloc);
 }
 #endif
@@ -524,7 +525,7 @@ TEST (struct_t_get_serial_size)
 
   u16 act;
   struct_t_get_serial_size (&act, &st, &ctx->e);
-  u64 exp = (2) + (4 * 2) + (3 + 2 + 4 + 5) + 4 * 2;
+  u64 exp = 2 + (4 * 2) + (3 + 2 + 4 + 5) + (4 * 2);
 
   test_assert_int_equal (exp, act);
 }
@@ -893,7 +894,7 @@ struct_t_random (
     return error_trace (e);
   }
 
-  st->types = arena_malloc (alloc, st->len, sizeof *st->types, e);
+  st->types = (struct type **)arena_malloc (alloc, st->len, sizeof *st->types, e);
   if (st->types == NULL) {
     return error_trace (e);
   }

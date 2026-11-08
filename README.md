@@ -82,7 +82,7 @@ Core ideas
 A database holds **variables**. Each variable has:
 
 * a **name**, like `prices`
-* a **type**, the byte layout of one element, like `f64` 
+* a **type**, the byte layout of one element, like `f64`
 * **data**, an array of elements of that type
 
 You work with variables through short queries:
@@ -194,19 +194,19 @@ reference model and crashes it at random:
 AI Usage Policy
 ---------------
 
-Moderate controlled AI usage is encouraged in Numstore but due to the highly 
+Moderate controlled AI usage is encouraged in Numstore but due to the highly
 fragile nature of databases, heavy AI auditing and human driving is required.
 
-Numstore's philosophy is: If you're going to use it, use it right. That's why 
-I've defined a series of skills in `.claude/skills`. When agents do work with 
+Numstore's philosophy is: If you're going to use it, use it right. That's why
+I've defined a series of skills in `.claude/skills`. When agents do work with
 the code (and they will), they better do it following the evolving guidance
 defined at the outset.
 
-Every single line of code that goes into Numstore, whether written by a 
-human or AI, should ideally get both human and AI eyes on it. AI is a 
-great code reviewer to find "fat fingered" mistakes and point out design 
-problems, but a _concious_ and critical thinking human should be driving 
-all decisions. There will never be a line of code in Numstore that hasn't 
+Every single line of code that goes into Numstore, whether written by a
+human or AI, should ideally get both human and AI eyes on it. AI is a
+great code reviewer to find "fat fingered" mistakes and point out design
+problems, but a _concious_ and critical thinking human should be driving
+all decisions. There will never be a line of code in Numstore that hasn't
 been re written by a human.
 
 Things I ask AI to do:

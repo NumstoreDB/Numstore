@@ -195,7 +195,8 @@ union_t_create (struct union_t *dest, struct kvt_list list, struct arena_alloc *
       return error_trace (e);
     }
 
-    dest->types = arena_alloc_copy (dalloc, list.types, list.len * sizeof *dest->types, e);
+    dest->types = (struct type **)
+        arena_alloc_copy (dalloc, list.types, list.len * sizeof *dest->types, e);
     // TODO: this checks keys again instead of types, so a failed types copy
     // returns SUCCESS with types == NULL
     if (dest->keys == NULL) {
@@ -343,7 +344,7 @@ TEST (union_t_snprintf)
   const char *expected = "union { foo u32, fo u8, baro u16, bazbi cf128 }";
   char       *ret      = type_tostr (&ctx->alloc, &t, &ctx->e);
   i_log_type (&t, &ctx->e);
-  test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
+  test_assert_int_equal (strncmp (expected, ret, strnlen (expected, 4096)), 0);
   arena_alloc_free_all (&ctx->alloc);
 }
 #endif
@@ -483,7 +484,7 @@ TEST (union_t_get_serial_size)
 
   u16 act;
   union_t_get_serial_size (&act, &st, &ctx->e);
-  u64 exp = (2) + (4 * 2) + (3 + 2 + 4 + 5) + 4 * 2;
+  u64 exp = 2 + (4 * 2) + (3 + 2 + 4 + 5) + (4 * 2);
 
   test_assert_int_equal (exp, act);
 }
@@ -815,7 +816,7 @@ union_t_random (
     return error_trace (e);
   }
 
-  un->types = arena_malloc (alloc, un->len, sizeof *un->types, e);
+  un->types = (struct type **)arena_malloc (alloc, un->len, sizeof *un->types, e);
   if (un->types == NULL) {
     return error_trace (e);
   }

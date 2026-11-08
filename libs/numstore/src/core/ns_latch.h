@@ -26,7 +26,9 @@
  * ----------------------------------------------------------------------------
  * @brief A spin lock - a lightweight lock to use for internal data structures
  *
- * TODO - (16) ABA problem
+ * TODO: the latch can suffer from the ABA problem if a waiter observes the
+ * state flip and flip back. Document why callers are immune, or add a
+ * version counter.
  ******************************************************************************/
 
 /*-----------------------------------------------------------------------------

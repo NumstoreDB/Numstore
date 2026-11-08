@@ -64,8 +64,8 @@ calculation. A public function that takes a struct with an invariant and
 doesn't `DBG_ASSERT` it is an easy find. See
 [assertions.md](../writing-code/references/assertions.md).
 
-If a struct is missing a DEFINE_DBG_ASSERT, add it, and add that DBG_ASSERT 
-to other places in the function. You can make the DBG_ASSERT body fleshed out 
+If a struct is missing a DEFINE_DBG_ASSERT, add it, and add that DBG_ASSERT
+to other places in the function. You can make the DBG_ASSERT body fleshed out
 
 4. Format with PRI macros
 -------------------------
@@ -107,7 +107,7 @@ a comment.
 
 Delete comments that restate the code, are wrong, or are stale. Where the
 line needs one, write a comment that says why. Rules are in
-[comments.md](../writing-code/references/comments.md). 
+[comments.md](../writing-code/references/comments.md).
 
 7. Narrate tests
 ----------------
@@ -339,14 +339,14 @@ struct foo *f = malloc (sizeof *f);
 ---------------------------
 
 - If the function is only ever used inside the file, (e.g. it's a helper)
-  make it static 
+  make it static
 
 25. Safe string operations
 ---------------------------
 
-- Replace all occurences of strlen with strnlen and bound by a sensible number 
+- Replace all occurences of strlen with strnlen and bound by a sensible number
   (like MAX_FILE_SIZE or something)
-- Replace all 
+- Replace all
 
 26. Strict aliasing compliance
 
@@ -355,7 +355,7 @@ When deserializing binary page headers or raw log records from byte arrays, use
 memcpy or access through char * pointers rather than casting incompatible
 pointer types directly:
 
-```
+```c
 // Before (Undefined Behavior under strict aliasing)
 struct ns_page_header *hdr = (struct ns_page_header *)raw_bytes;
 
@@ -364,9 +364,9 @@ struct ns_page_header hdr;
 memcpy (&hdr, raw_bytes, sizeof (hdr));
 ```
 
-27. Explicit loop bounds and corruption checks 
+27. Explicit loop bounds and corruption checks
 
-```
+```c
 u32 offset = 0;
 while (offset < page_payload_len) {
   if (safe_add_u32 (&offset, offset, record_size)) {
@@ -379,12 +379,12 @@ Every loop iterating over variable-length disk records, transaction logs, or
 B-tree slots must include explicit upper-bound safety checks against remaining
 buffer lengths. Never trust that on-disk length headers are uncorrupted: If a
 loop doesn't have a defined upper bound, define a macro above like
-MAX_RETRY_LOOPS and loop to that upper bound - return errors for over 
+MAX_RETRY_LOOPS and loop to that upper bound - return errors for over
 
 36. Stack-preserving error tracing (error_trace)
 Never return a raw error code up the call stack if it discards context. Wrap or trace errors at every architectural layer boundary using the project's error-handling mechanisms so that diagnostic logs retain the complete call path down to the root failure:
 
-```
+```c
 err_t ret = ns_pager_flush_page (pager, page, e);
 if (ret < 0) {
   return error_trace (e); // Preserves file and line context across stack frames

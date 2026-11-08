@@ -57,7 +57,10 @@ struct test_ctx *
 test_ctx_create (error *e)
 {
   struct i_mem     mem = default_mem ();
-  struct test_ctx *ctx = mem.table->calloc (mem.self, 1, sizeof *ctx, e);
+  struct test_ctx *ctx = FAULT_NULL (
+      mem.table->calloc (mem.self, 1, sizeof *ctx, e),
+      "test_ctx_create:calloc"
+  );
   if (ctx == NULL) {
     return NULL;
   }
@@ -65,18 +68,20 @@ test_ctx_create (error *e)
   ctx->e   = error_create ();
   ctx->mem = mem;
 
-  if (system_os_create (mem, &ctx->os, e) < 0) {
+  if (FAULT (system_os_create (mem, &ctx->os, e), "test_ctx_create:os") < 0) {
     mem.table->free (mem.self, ctx);
     return NULL;
   }
 
-  if (faulty_mem_create (mem, 0.0F, &ctx->faulty_mem, e) < 0) {
+  if (FAULT (faulty_mem_create (mem, 0.0F, &ctx->faulty_mem, e), "test_ctx_create:faulty_mem")
+      < 0) {
     system_os_free (ctx->os);
     mem.table->free (mem.self, ctx);
     return NULL;
   }
 
-  if (faulty_os_create (mem, ctx->os, 0.0F, &ctx->faulty_os, e) < 0) {
+  if (FAULT (faulty_os_create (mem, ctx->os, 0.0F, &ctx->faulty_os, e), "test_ctx_create:faulty_os")
+      < 0) {
     faulty_mem_free (ctx->faulty_mem);
     system_os_free (ctx->os);
     mem.table->free (mem.self, ctx);
@@ -102,6 +107,40 @@ test_ctx_free (struct test_ctx *ctx)
 
   struct i_mem mem = ctx->mem;
   mem.table->free (mem.self, ctx);
+}
+
+TEST (test_ctx_create_failures)
+{
+  static const char *const faults[] = {
+      "test_ctx_create:calloc",
+      "test_ctx_create:os",
+      "test_ctx_create:faulty_mem",
+      "test_ctx_create:faulty_os",
+  };
+
+  for (u32 i = 0; i < arrlen (faults); i++) {
+    TEST_CASE ("%s fails", faults[i])
+    {
+      // Setup - make exactly one step of the constructor fail
+      fault_set (faults[i]);
+
+      // Run
+      struct test_ctx *inner = test_ctx_create (&ctx->e);
+
+      // Teardown
+      fault_reset_all ();
+      test_assert (inner == NULL);
+      test_assert_int_equal (ctx->e.cause_code, ERR_INVALID_ARGUMENT);
+      error_reset (&ctx->e);
+    }
+  }
+
+  TEST_CASE ("no fault builds a usable ctx")
+  {
+    struct test_ctx *inner = test_ctx_create (&ctx->e);
+    test_assert (inner != NULL);
+    test_ctx_free (inner);
+  }
 }
 
 static int

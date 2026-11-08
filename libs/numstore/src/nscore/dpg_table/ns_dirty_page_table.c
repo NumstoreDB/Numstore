@@ -49,7 +49,7 @@ static void
 dpge_key_init (struct dpg_entry *dest, const pgno pg)
 {
   dest->pg = pg;
-  hnode_init (&dest->node, pg);
+  hnode_init (&dest->node, (u32)pg); // Hash key, truncation is fine
   latch_init (&dest->l);
 }
 
@@ -58,7 +58,7 @@ dpge_init (struct dpg_entry *dest, const pgno pg, const lsn rec_lsn)
 {
   dest->rec_lsn = rec_lsn;
   dest->pg      = pg;
-  hnode_init (&dest->node, pg);
+  hnode_init (&dest->node, (u32)pg); // Hash key, truncation is fine
   latch_init (&dest->l);
 }
 

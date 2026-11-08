@@ -137,7 +137,7 @@ TEST (walos_open)
         error_reset (&ctx->e);
 
         // Reset
-        if (wos) {
+        if (wos != NULL) {
           walos_close (wos, &ctx->e);
         }
 
@@ -167,7 +167,7 @@ TEST (walos_open)
         error_reset (&ctx->e);
 
         // Reset
-        if (wos) {
+        if (wos != NULL) {
           walos_close (wos, &ctx->e);
         }
 
@@ -497,13 +497,13 @@ TEST (walos_flush_all)
     // Flush buffered data
     u8 data[10] = {0};
     walos_write_all (wos, NULL, data, 10);
-    test_assert_int_equal (wos->flushed_lsn, 0);
+    test_assert_type_equal (wos->flushed_lsn, (lsn)(0), lsn, PRlsn);
     walos_flush_all (wos);
-    test_assert_int_equal (wos->flushed_lsn, 10);
+    test_assert_type_equal (wos->flushed_lsn, (lsn)(10), lsn, PRlsn);
 
     // Flushing an empty buffer changes nothing
     walos_flush_all (wos);
-    test_assert_int_equal (wos->flushed_lsn, 10);
+    test_assert_type_equal (wos->flushed_lsn, (lsn)(10), lsn, PRlsn);
 
     // Clean up
     walos_close (wos, &ctx->e);
@@ -581,11 +581,9 @@ walos_write_all (struct wal_ostream *w, u32 *checksum, const void *data, u32 len
 
   while (written < len) {
     // Flush on full
-    if (cbuffer_avail (&w->buffer) == 0) {
-      if (walos_flush_impl (w, &w->e) < 0) {
-        latch_unlock (&w->l);
-        intentionally_crash ();
-      }
+    if (cbuffer_avail (&w->buffer) == 0 && walos_flush_impl (w, &w->e) < 0) {
+      latch_unlock (&w->l);
+      intentionally_crash ();
     }
 
     // Write maximally to the buffer
@@ -617,21 +615,21 @@ TEST (walos_write_all)
     rand_bytes (data, WAL_BUFFER_CAP);
 
     // Under buffer size, flushed lsn should be unchanged
-    test_assert_int_equal (wos->flushed_lsn, 0);
+    test_assert_type_equal (wos->flushed_lsn, (lsn)(0), lsn, PRlsn);
     walos_write_all (wos, &checksum, data, 10);
-    test_assert_int_equal (wos->flushed_lsn, 0);
+    test_assert_type_equal (wos->flushed_lsn, (lsn)(0), lsn, PRlsn);
 
     // Writing over buffer size, flush out
     walos_write_all (wos, &checksum, data, WAL_BUFFER_CAP);
-    test_assert_int_equal (wos->flushed_lsn, WAL_BUFFER_CAP);
+    test_assert_type_equal (wos->flushed_lsn, (lsn)(WAL_BUFFER_CAP), lsn, PRlsn);
 
     // Writing exactly buffer size (unchaged)
     walos_write_all (wos, &checksum, data, WAL_BUFFER_CAP - 10);
-    test_assert_int_equal (wos->flushed_lsn, WAL_BUFFER_CAP);
+    test_assert_type_equal (wos->flushed_lsn, (lsn)(WAL_BUFFER_CAP), lsn, PRlsn);
 
     // Writing 1 more byte
     walos_write_all (wos, &checksum, data, 1);
-    test_assert_int_equal (wos->flushed_lsn, 2 * WAL_BUFFER_CAP);
+    test_assert_type_equal (wos->flushed_lsn, (lsn)(2 * WAL_BUFFER_CAP), lsn, PRlsn);
 
     u32 actual_checksum = checksum_init ();
     checksum_execute (&actual_checksum, data, 10);
@@ -802,11 +800,11 @@ TEST (walos_truncate)
     u8 data[10] = {0};
     walos_write_all (wos, NULL, data, 10);
     walos_flush_all (wos);
-    test_assert_int_equal ((i32)walos_test_file_size (ctx, "foo"), 10);
+    test_assert_type_equal (walos_test_file_size (ctx, "foo"), (slsn)10, slsn, PRId64);
 
     // Truncate
     test_assert_int_equal (walos_truncate (wos, &ctx->e), SUCCESS);
-    test_assert_int_equal ((i32)walos_test_file_size (ctx, "foo"), 0);
+    test_assert_type_equal (walos_test_file_size (ctx, "foo"), (slsn)0, slsn, PRId64);
 
     // Clean up
     walos_close (wos, &ctx->e);

@@ -185,7 +185,7 @@ slab_contains (const struct slab_alloc *alloc, struct slab *s, const void *ptr)
 {
   void       *start = s->data;
   const void *end   = (u8 *)start + ((size_t)alloc->cap_per_slab * alloc->size);
-  return ptr >= start && ptr < end;
+  return (ptr >= start) && (ptr < end);
 }
 
 static struct slab *

@@ -53,7 +53,8 @@
  * ]
  * @endcode
  *
- * TODO - this example could be better
+ * TODO: the example selects the same field twice, so it doesn't show how
+ * sub-accessors split a parent. Replace it with a nested-struct example.
  ******************************************************************************/
 
 struct byte_accessor

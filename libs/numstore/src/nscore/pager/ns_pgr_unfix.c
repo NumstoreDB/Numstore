@@ -18,6 +18,7 @@ void
 pgr_unfix (page_h *h, int flags)
 {
   (void)flags; // Only read by the assert below, which compiles away in release
+  DBG_ASSERT (page_h, h);
   ASSERT (h->mode == PHM_X || h->mode == PHM_S);
 
   latch_lock (&h->pgr->ctrl);

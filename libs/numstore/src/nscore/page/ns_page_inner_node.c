@@ -135,8 +135,8 @@ TEST (in_print)
     static pgno   pgs[IN_MAX_KEYS];
     static b_size keys[IN_MAX_KEYS];
     for (p_size i = 0; i < IN_MAX_KEYS; ++i) {
-      pgs[i]  = (pgno)(i + 1);
-      keys[i] = (b_size)(i * 2);
+      pgs[i]  = (pgno)i + 1;
+      keys[i] = (b_size)i * 2;
     }
 
     inner_node_init_for_testing (&in, pgs, keys, IN_MAX_KEYS);
@@ -328,7 +328,7 @@ TEST (in_set_get_simple)
 
     test_assert_int_equal (in_get_len (&p), 0);
     test_assert_ptr_equal (in_get_backwards_keys_imut (&p), NULL);
-    test_assert_int_equal (in_get_size (&p), 0);
+    test_assert_type_equal (in_get_size (&p), 0, b_size, PRb_size);
     test_assert_int_equal (in_get_avail (&p), IN_MAX_KEYS);
     test_assert_type_equal (in_get_next (&p), PGNO_NULL, pgno, PRpgno);
     test_assert_type_equal (in_get_prev (&p), PGNO_NULL, pgno, PRpgno);
@@ -350,16 +350,16 @@ TEST (in_set_get_simple)
     test_assert_int_equal (in_get_len (&p), 3);
     test_assert_int_equal (in_get_avail (&p), IN_MAX_KEYS - 3);
 
-    test_assert_int_equal (in_get_key (&p, 0), 5);
-    test_assert_int_equal (in_get_key (&p, 1), 7);
-    test_assert_int_equal (in_get_key (&p, 2), 9);
+    test_assert_type_equal (in_get_key (&p, 0), 5, b_size, PRb_size);
+    test_assert_type_equal (in_get_key (&p, 1), 7, b_size, PRb_size);
+    test_assert_type_equal (in_get_key (&p, 2), 9, b_size, PRb_size);
 
     test_assert_type_equal (in_get_leaf (&p, 0), 100, pgno, PRpgno);
     test_assert_type_equal (in_get_leaf (&p, 1), 101, pgno, PRpgno);
     test_assert_type_equal (in_get_leaf (&p, 2), 102, pgno, PRpgno);
 
     // Derived macros
-    test_assert_int_equal (in_get_right_most_key (&p), 9);
+    test_assert_type_equal (in_get_right_most_key (&p), 9, b_size, PRb_size);
     test_assert_type_equal (in_get_right_most_leaf (&p), 102, pgno, PRpgno);
     test_assert_int_equal (in_get_nchildren (&p), 4);
     test_fail_if (in_full (&p));
@@ -860,63 +860,63 @@ TEST (in_choose_lidx)
   b_size nleft;
   in_choose_lidx (&idx, &nleft, &in, 0);
   test_assert_int_equal (idx, 0);
-  test_assert_int_equal (nleft, 0);
+  test_assert_type_equal (nleft, 0, b_size, PRb_size);
 
   in_choose_lidx (&idx, &nleft, &in, 1);
   test_assert_int_equal (idx, 0);
-  test_assert_int_equal (nleft, 0);
+  test_assert_type_equal (nleft, 0, b_size, PRb_size);
 
   in_choose_lidx (&idx, &nleft, &in, 2);
   test_assert_int_equal (idx, 1);
-  test_assert_int_equal (nleft, 2);
+  test_assert_type_equal (nleft, 2, b_size, PRb_size);
 
   in_choose_lidx (&idx, &nleft, &in, 3);
   test_assert_int_equal (idx, 1);
-  test_assert_int_equal (nleft, 2);
+  test_assert_type_equal (nleft, 2, b_size, PRb_size);
 
   in_choose_lidx (&idx, &nleft, &in, 4);
   test_assert_int_equal (idx, 2);
-  test_assert_int_equal (nleft, 4);
+  test_assert_type_equal (nleft, 4, b_size, PRb_size);
 
   in_choose_lidx (&idx, &nleft, &in, 5);
   test_assert_int_equal (idx, 3);
-  test_assert_int_equal (nleft, 5);
+  test_assert_type_equal (nleft, 5, b_size, PRb_size);
 
   in_choose_lidx (&idx, &nleft, &in, 6);
   test_assert_int_equal (idx, 3);
-  test_assert_int_equal (nleft, 5);
+  test_assert_type_equal (nleft, 5, b_size, PRb_size);
 
   in_choose_lidx (&idx, &nleft, &in, 7);
   test_assert_int_equal (idx, 3);
-  test_assert_int_equal (nleft, 5);
+  test_assert_type_equal (nleft, 5, b_size, PRb_size);
 
   in_choose_lidx (&idx, &nleft, &in, 8);
   test_assert_int_equal (idx, 3);
-  test_assert_int_equal (nleft, 5);
+  test_assert_type_equal (nleft, 5, b_size, PRb_size);
 
   in_choose_lidx (&idx, &nleft, &in, 9);
   test_assert_int_equal (idx, 3);
-  test_assert_int_equal (nleft, 5);
+  test_assert_type_equal (nleft, 5, b_size, PRb_size);
 
   in_choose_lidx (&idx, &nleft, &in, 10);
   test_assert_int_equal (idx, 4);
-  test_assert_int_equal (nleft, 10);
+  test_assert_type_equal (nleft, 10, b_size, PRb_size);
 
   in_choose_lidx (&idx, &nleft, &in, 11);
   test_assert_int_equal (idx, 4);
-  test_assert_int_equal (nleft, 10);
+  test_assert_type_equal (nleft, 10, b_size, PRb_size);
 
   in_choose_lidx (&idx, &nleft, &in, 12);
   test_assert_int_equal (idx, 4);
-  test_assert_int_equal (nleft, 10);
+  test_assert_type_equal (nleft, 10, b_size, PRb_size);
 
   in_choose_lidx (&idx, &nleft, &in, 13);
   test_assert_int_equal (idx, 4);
-  test_assert_int_equal (nleft, 10);
+  test_assert_type_equal (nleft, 10, b_size, PRb_size);
 
   in_choose_lidx (&idx, &nleft, &in, 5000);
   test_assert_int_equal (idx, 4);
-  test_assert_int_equal (nleft, 10);
+  test_assert_type_equal (nleft, 10, b_size, PRb_size);
 }
 #endif
 

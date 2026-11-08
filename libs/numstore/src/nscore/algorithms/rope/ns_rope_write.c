@@ -274,7 +274,6 @@ ns_rope_write (const struct ns_write_params params, error *e)
   }
   if (params.stride < 0) {
     return error_causef (e, ERR_INVALID_ARGUMENT, "Negative strides are not implemented (yet)");
-  } else {
-    return error_causef (e, ERR_INVALID_ARGUMENT, "write stride is 0");
   }
+  return error_causef (e, ERR_INVALID_ARGUMENT, "write stride is 0");
 }

@@ -20,6 +20,7 @@
 #include "core/ns_numerics.h"
 #include "core/ns_testing.h"
 #include "core/os/ns_malloc.h"
+#include "nscore/testing/simulation/ns_db_state_machine.h"
 #include "nscore/testing/simulation/ns_ref_state_machine.h"
 #include "nscore/types/ns_types.h"
 #include "nscore/variables/ns_variables.h"
@@ -163,7 +164,7 @@ get_random_unique_name (struct ns_ref *ref, struct arena_alloc *alloc, error *e)
     }
 
     // Copy over to ret (including the null terminator)
-    u32 len = strlen (candidate);
+    u32 len = strnlen (candidate, SIM_VNAME_MAX);
 
     ret     = arena_malloc (alloc, len + 1, 1, e);
     if (ret == NULL) {
@@ -194,7 +195,7 @@ get_random_other_existing_name (struct ns_ref *ref, struct arena_alloc *alloc, e
       continue;
     }
 
-    u32   len = strlen (cand);
+    u32   len = strnlen (cand, SIM_VNAME_MAX);
     char *ret = arena_malloc (alloc, len + 1, 1, e);
     if (ret == NULL) {
       return NULL;
@@ -415,7 +416,9 @@ build_insert (struct operation *dest, struct rand_op_params params, error *e)
 static inline err_t
 build_remove (struct operation *dest, struct rand_op_params params, error *e)
 {
-  b_size ofst, stride, nelems;
+  b_size ofst;
+  b_size stride;
+  b_size nelems;
   get_random_slice (params.ref, &ofst, &stride, &nelems);
 
   // Sized for the whole variable so the executor can read it all back
@@ -435,7 +438,9 @@ build_remove (struct operation *dest, struct rand_op_params params, error *e)
 static inline err_t
 build_read (struct operation *dest, struct rand_op_params params, error *e)
 {
-  b_size ofst, stride, nelems;
+  b_size ofst;
+  b_size stride;
+  b_size nelems;
   get_random_slice (params.ref, &ofst, &stride, &nelems);
 
   if (alloc_read_bufs (dest, params.ref, ns_ref_cur_len (params.ref), e) < 0) {
@@ -454,7 +459,9 @@ build_read (struct operation *dest, struct rand_op_params params, error *e)
 static inline err_t
 build_write (struct operation *dest, struct rand_op_params params, error *e)
 {
-  b_size ofst, stride, nelems;
+  b_size ofst;
+  b_size stride;
+  b_size nelems;
   get_random_slice (params.ref, &ofst, &stride, &nelems);
 
   if (alloc_data (dest, params.ref, nelems, e) < 0) {
@@ -481,7 +488,7 @@ build_write (struct operation *dest, struct rand_op_params params, error *e)
 void
 opg_spin_enabled (u8 enabled[NSS_AT_LEN])
 {
-  int mask = rand () % ((1 << NSS_AT_LEN) - 1) + 1;
+  int mask = (rand () % ((1 << NSS_AT_LEN) - 1)) + 1;
   for (int i = 0; i < NSS_AT_LEN; ++i) {
     enabled[i] = (mask >> i) & 1;
   }

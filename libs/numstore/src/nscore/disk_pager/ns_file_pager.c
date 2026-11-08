@@ -71,10 +71,8 @@ fpgr_open (const char *dbname, struct i_mem mem, struct i_os os, u32 header_len,
     dest->flags |= FP_ISNEW;
 
     // Extend an empty file to the header length
-    if (size == 0) {
-      if (dest->f.table->truncate (dest->f.self, header_len, e) < 0) {
-        goto fp_failed;
-      }
+    if (size == 0 && dest->f.table->truncate (dest->f.self, header_len, e) < 0) {
+      goto fp_failed;
     }
 
     size = header_len;
@@ -156,7 +154,7 @@ TEST (fpgr_open)
 
   TEST_CASE ("existing file with three pages")
   {
-    test_assert_int_equal (fp.table->truncate (fp.self, 3 * NS_PAGE_SIZE, &ctx->e), SUCCESS);
+    test_assert_int_equal (fp.table->truncate (fp.self, 3 * (u64)NS_PAGE_SIZE, &ctx->e), SUCCESS);
     struct file_pager *pager = fpgr_open ("testdb", ctx->mem, ctx->os, 0, &ctx->e);
     test_assert (pager != NULL);
     test_assert (!fpgr_isnew (pager));
@@ -207,7 +205,10 @@ p_size
 fpgr_get_npages (const struct file_pager *fp)
 {
   DBG_ASSERT (file_pager, fp);
-  return atomic_load (&fp->npages);
+  const pgno npages = atomic_load (&fp->npages);
+  // TODO: p_size is 32 bits but pgno is 64; widen the return type of this public API
+  ASSERT (npages <= UINT32_MAX);
+  return (p_size)npages;
 }
 
 err_t
@@ -223,7 +224,7 @@ fpgr_extend (struct file_pager *p, pgno dest, error *e)
     return SUCCESS;
   }
 
-  if (p->f.table->truncate (p->f.self, p->header_len + NS_PAGE_SIZE * (dest), e) < 0) {
+  if (p->f.table->truncate (p->f.self, p->header_len + ((u64)NS_PAGE_SIZE * dest), e) < 0) {
     latch_unlock (&p->l);
     goto failed;
   }
@@ -256,7 +257,7 @@ TEST (fpgr_new)
     test_assert_int_equal (fpgr_extend (pager, n, &ctx->e), SUCCESS);
     test_assert_type_equal (atomic_load (&pager->npages), n, pgno, PRpgno);
 
-    const i64 expected = (i64)(NS_PAGE_SIZE * n);
+    const i64 expected = (i64)((u64)NS_PAGE_SIZE * n);
     test_assert_type_equal (fp.table->file_size (fp.self, &ctx->e), expected, i64, PRId64);
   }
 
@@ -265,7 +266,7 @@ TEST (fpgr_new)
   test_assert_type_equal (atomic_load (&pager->npages), (pgno)3, pgno, PRpgno);
   test_assert_type_equal (
       fp.table->file_size (fp.self, &ctx->e),
-      (i64)(3 * NS_PAGE_SIZE),
+      (i64)(3 * (u64)NS_PAGE_SIZE),
       i64,
       PRId64
   );
@@ -301,7 +302,7 @@ fpgr_read (struct file_pager *p, u8 *dest, pgno pg, error *e)
       p->f.self,
       dest,
       NS_PAGE_SIZE,
-      p->header_len + pg * NS_PAGE_SIZE,
+      p->header_len + ((u64)NS_PAGE_SIZE * pg),
       e
   );
 
@@ -331,8 +332,8 @@ fpgr_write (struct file_pager *p, const u8 *src, const pgno pg, error *e)
   DBG_ASSERT (file_pager, p);
   ASSERT (pg < atomic_load (&p->npages));
 
-  if (p->f.table->pwrite_all (p->f.self, src, NS_PAGE_SIZE, p->header_len + pg * NS_PAGE_SIZE, e)
-      < 0) {
+  const u64 offset = p->header_len + ((u64)NS_PAGE_SIZE * pg);
+  if (p->f.table->pwrite_all (p->f.self, src, NS_PAGE_SIZE, offset, e) < 0) {
     goto theend;
   }
 

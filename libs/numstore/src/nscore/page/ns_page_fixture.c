@@ -316,13 +316,14 @@ build_page_desc (struct page_desc *desc, struct pager *pager, struct txn *txn, e
     }
 
     case PG_DATA_LIST: {
+      ASSERT (desc->size <= UINT32_MAX);
       const struct dl_page_builder builder = {
           .pager = pager,
           .txn   = txn,
           .prev  = NULL,
           .next  = NULL, // The caller links this layer
           .data  = desc->data_list,
-          .dclen = desc->size,
+          .dclen = (u32)desc->size,
       };
 
       return build_fake_data_list (&desc->out, builder, e);

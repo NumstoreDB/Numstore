@@ -39,6 +39,7 @@
 void
 pgr_cancel (page_h *h)
 {
+  DBG_ASSERT (page_h, h);
   ASSERT (h->mode == PHM_X || h->mode == PHM_S);
   ASSERT (h->pgr->flags & PW_PRESENT);
 

@@ -33,7 +33,7 @@ TEST (llist)
   struct llnode *head = &nodes[0].node;
 
   for (u32 i = 1; i < 10; ++i) {
-    nodes[i].value = i;
+    nodes[i].value = (int)i;
     list_push (&head, &nodes[i].node);
   }
 

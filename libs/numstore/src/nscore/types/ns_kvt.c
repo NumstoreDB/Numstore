@@ -152,7 +152,7 @@ kvlb_build (struct kvt_list *dest, struct kvt_list_builder *ub, error *e)
     return error_trace (e);
   }
 
-  struct type **types = builder_malloc_persist (ub->b, ub->tlen, sizeof *types, e);
+  struct type **types = (struct type **)builder_malloc_persist (ub->b, ub->tlen, sizeof *types, e);
   if (types == NULL) {
     return error_trace (e);
   }

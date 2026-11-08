@@ -71,7 +71,7 @@ win_fail (error *e, const err_t type, const char *op, const char *what, const DW
   char buf[WIN_ERR_BUF];
   win_strerror (err, buf, sizeof (buf));
 
-  if (what) {
+  if (what != NULL) {
     return error_causef (e, type, "%s %s: %s", op, what, buf);
   }
   return error_causef (e, type, "%s: %s", op, buf);

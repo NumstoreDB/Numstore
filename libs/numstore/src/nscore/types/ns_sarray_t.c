@@ -178,7 +178,7 @@ TEST (sarray_t_snprintf)
 
   char       *ret      = type_tostr (&ctx->alloc, &s, &ctx->e);
   i_log_type (&s, &ctx->e);
-  test_assert_int_equal (strncmp (expected, ret, strlen (expected)), 0);
+  test_assert_int_equal (strncmp (expected, ret, strnlen (expected, 4096)), 0);
   arena_alloc_free_all (&ctx->alloc);
 }
 #endif
@@ -305,7 +305,7 @@ TEST (sarray_t_get_serial_size)
   u16 dest;
   sarray_t_get_serial_size (&dest, &s, &ctx->e);
 
-  test_assert_int_equal (dest, 3 * 4 + 2 + 2);
+  test_assert_int_equal (dest, (3 * 4) + 2 + 2);
 }
 #endif
 

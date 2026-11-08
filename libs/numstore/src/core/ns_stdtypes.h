@@ -159,14 +159,14 @@ typedef uint8_t  wlh;     // WAL header
 #define I32_MIN ((i32)(~I32_MAX))
 #define I64_MIN ((i64)(~I64_MAX))
 
-#define F16_MAX  65504.0f
-#define F32_MAX  3.4028235e+38f
+#define F16_MAX  65504.0F
+#define F32_MAX  3.4028235e+38F
 #define F64_MAX  1.7976931348623157e+308
 #define F128_MAX FLT128_MAX
 #define F256_MAX 1.6113e+78913L
 
-#define F16_MIN  (-65504.0f)
-#define F32_MIN  (-3.4028235e+38f)
+#define F16_MIN  (-65504.0F)
+#define F32_MIN  (-3.4028235e+38F)
 #define F64_MIN  (-1.7976931348623157e+308)
 #define F128_MIN FLT128_MIN
 #define F256_MIN (-1.6113e+78913L)

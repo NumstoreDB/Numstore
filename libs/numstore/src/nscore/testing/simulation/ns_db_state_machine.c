@@ -25,7 +25,7 @@
 
 #include <string.h>
 
-err_t
+static err_t
 ns_db_set_file_size (struct ns_db *db, error *e)
 {
   (void)e;
@@ -126,13 +126,13 @@ ns_db_close (struct ns_db *db, error *e)
   return ret;
 }
 
-#define pre_op(db) u64 now = db->timer.table->timer_now_ns (db->timer.self)
+#define pre_op(db) u64 now = (db)->timer.table->timer_now_ns ((db)->timer.self)
 
-#define post_op(db)                                                                 \
-  do {                                                                              \
-    db->prev_op_duration_ns = db->timer.table->timer_now_ns (db->timer.self) - now; \
-    db->total_working_ns += db->prev_op_duration_ns;                                \
-  }                                                                                 \
+#define post_op(db)                                                                       \
+  do {                                                                                    \
+    (db)->prev_op_duration_ns = (db)->timer.table->timer_now_ns ((db)->timer.self) - now; \
+    (db)->total_working_ns += (db)->prev_op_duration_ns;                                  \
+  }                                                                                       \
   while (0)
 
 // Returns a reliable_mem copy of src, or NULL if src is NULL.
@@ -146,7 +146,7 @@ ns_db_copy_name (struct ns_db *db, const char *src, error *e)
 
   // +1 so the copy stays NUL terminated - it's handed to strfcstr(), which
   // calls strlen() on it.
-  size_t len  = strlen (src) + 1;
+  size_t len  = strnlen (src, SIM_VNAME_MAX) + 1;
   char  *copy = db->reliable_mem.table->malloc (db->reliable_mem.self, len, 1, e);
   if (copy == NULL) {
     return NULL;
@@ -290,9 +290,8 @@ ns_db_cur (struct ns_db *db)
 {
   if (db->tx != NULL) {
     return db->var_working;
-  } else {
-    return db->var_committed;
   }
+  return db->var_committed;
 }
 
 // Takes ownership of vname (may be NULL)

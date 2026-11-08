@@ -197,7 +197,7 @@ struct mus_builder
 
 struct mus_builder musb_create (struct builder *b);
 err_t musb_accept_key (struct mus_builder *eb, struct user_stride stride, error *e);
-err_t musb_build (struct multi_user_stride *m, struct mus_builder *eb, error *e);
+err_t musb_build (struct multi_user_stride *dest, struct mus_builder *eb, error *e);
 err_t user_stride_validate (struct user_stride u, error *e);
 
 #endif // NS_STRIDE_H

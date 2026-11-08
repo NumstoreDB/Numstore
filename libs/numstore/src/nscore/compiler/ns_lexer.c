@@ -729,8 +729,8 @@ TEST (lexer_fail_malloc)
   // from the faulty allocator so each buffer growth is a fallible malloc
   char src[512];
   for (u32 i = 0; i < 256; i++) {
-    src[2 * i]     = '+';
-    src[2 * i + 1] = ' ';
+    src[2 * i]       = '+';
+    src[(2 * i) + 1] = ' ';
   }
 
   struct arena_alloc a;

@@ -139,7 +139,9 @@ wal_get_end_lsn (struct wal *w, error *e)
 
   ASSERT (w->ostream);
 
-  return w->start_lsn + walos_get_lsn (w->ostream);
+  const lsn end = w->start_lsn + walos_get_lsn (w->ostream);
+  ASSERT (end <= INT64_MAX);
+  return (slsn)end;
 }
 
 struct wal *
@@ -327,7 +329,8 @@ wal_read_full (struct wal *w, u32 *checksum, wlh type1, wlh type2, u8 *buf, u32 
      * buf       head
      *           |         toread          |
      */
-    u32 toread = total_len - (head - buf) - sizeof (u32);
+    ASSERT ((u64)(head - buf) + sizeof (u32) <= total_len);
+    u32 toread = total_len - (u32)(head - buf) - (u32)sizeof (u32);
     if (toread > 0) {
       // Do a 1 time read of the rest of the record
       GUARD_EOF (walis_read_all (w->istream, checksum, head, toread, e));
@@ -545,7 +548,7 @@ wal_read_one (struct wal *w, struct wal_rec_hdr_read *dest, error *e)
   return WAL_NOT_EOF;
 }
 
-err_t
+static err_t
 wal_seek_unsafe (struct wal *w, lsn id, error *e)
 {
   DBG_ASSERT (wal, w);
@@ -599,7 +602,7 @@ wal_forward_scan (struct wal *w, lsn start, wal_log_func func, void *ctx, error 
     }
 
     // End of log file - transition to random access mode
-    else if (iseof) {
+    if (iseof) {
 
       if (w->ostream == NULL) {
 
@@ -619,13 +622,9 @@ wal_forward_scan (struct wal *w, lsn start, wal_log_func func, void *ctx, error 
       return SUCCESS;
     }
 
-    else {
-      // Else, execute the user supplied function
-      if (func != NULL) {
-        if (func (&w->rhdr, w->start_lsn + curlsn, ctx, e) < 0) {
-          return error_trace (e);
-        }
-      }
+    // Else, execute the user supplied function
+    if (func != NULL && func (&w->rhdr, w->start_lsn + curlsn, ctx, e) < 0) {
+      return error_trace (e);
     }
   }
 }
@@ -633,6 +632,7 @@ wal_forward_scan (struct wal *w, lsn start, wal_log_func func, void *ctx, error 
 struct wal_rec_hdr_read *
 wal_read_entry (struct wal *w, struct wal_rec_hdr_read *dest, lsn id, error *e)
 {
+  DBG_ASSERT (wal, w);
   struct wal_rec_hdr_read *ret = NULL;
   if (dest != NULL) {
     ret = dest;

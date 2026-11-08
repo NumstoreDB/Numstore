@@ -588,7 +588,7 @@ TEST (ns_api_open_with_error)
     char    erstr[256] = {0};
     nsdb_t *db = ns_open_with_error ("ns_api_no_such_directory_xyz/db", erstr, sizeof erstr);
     test_assert_ptr_equal (db, NULL);
-    test_assert (strlen (erstr) > 0);
+    test_assert (strnlen (erstr, MAX_ERRSTR_LEN) > 0);
   }
 
   test_assert_int_equal (ns_cleanup (NS_T_DB), 0);
@@ -927,7 +927,7 @@ TEST (ns_api_smfile_open_and_close)
         sizeof erstr
     );
     test_assert_ptr_equal (smf, NULL);
-    test_assert (strlen (erstr) > 0);
+    test_assert (strnlen (erstr, MAX_ERRSTR_LEN) > 0);
   }
 
   test_assert_int_equal (ns_cleanup (NS_T_SMF), 0);
@@ -1008,7 +1008,7 @@ TEST (ns_api_error_reporting)
 
     const char *msg = ns_strerror (db);
     test_assert (msg != NULL);
-    test_assert (strlen (msg) > 0);
+    test_assert (strnlen (msg, MAX_ERRSTR_LEN) > 0);
   }
 
   TEST_CASE ("ns_plan_fcreate rejects a malformed query")

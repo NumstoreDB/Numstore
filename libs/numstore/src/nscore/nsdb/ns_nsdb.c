@@ -55,7 +55,7 @@ nsdb_open (const char *path, struct i_mem mem, struct i_os os, error *e)
   ret->auto_tx.allow       = false; // Auto transactions are opt in
   ret->auto_tx.in_auto_txn = false;
 
-  ret->path.len            = strlen (path);
+  ret->path.len            = strnlen (path, NS_PATH_MAX);
   // TODO: a failure here reaches failed: with path.data still NULL, and the
   // plain free there asserts on it (nsdb_open_fail_malloc)
   ret->path.data           = mem.table->malloc (mem.self, ret->path.len, 1, e);

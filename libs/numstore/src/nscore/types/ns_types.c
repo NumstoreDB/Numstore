@@ -214,18 +214,18 @@ prim_t_snprintf (char *str, u32 size, const enum prim_t p)
 #ifndef NDEBUG
 TEST (prim_t_snprintf)
 {
-#  define CASE_PRIM(prim_type, exp)                                      \
-    TEST_CASE ("prim_t_snprintf(%s) == %s", #prim_type, exp)             \
-    {                                                                    \
-      struct type t = {                                                  \
-          .type = T_PRIM,                                                \
-          .p    = prim_type,                                             \
-      };                                                                 \
-                                                                         \
-      const char *expect = exp;                                          \
-      char       *ret    = type_tostr (&ctx->alloc, &t, &ctx->e);        \
-      i_log_type (&t, &ctx->e);                                          \
-      test_assert_int_equal (strncmp (expect, ret, strlen (expect)), 0); \
+#  define CASE_PRIM(prim_type, exp)                                             \
+    TEST_CASE ("prim_t_snprintf(%s) == %s", #prim_type, exp)                    \
+    {                                                                           \
+      struct type t = {                                                         \
+          .type = T_PRIM,                                                       \
+          .p    = prim_type,                                                    \
+      };                                                                        \
+                                                                                \
+      const char *expect = exp;                                                 \
+      char       *ret    = type_tostr (&ctx->alloc, &t, &ctx->e);               \
+      i_log_type (&t, &ctx->e);                                                 \
+      test_assert_int_equal (strncmp (expect, ret, strnlen (expect, 4096)), 0); \
     }
 
   CASE_PRIM (U8, "u8");
@@ -508,7 +508,7 @@ TEST (type_generate_string)
   {
     struct type t            = {.type = T_PRIM, .p = CF128};
     const char *expected     = "cf128";
-    u32         expected_len = (u32)strlen (expected);
+    u32         expected_len = (u32)strnlen (expected, 4096);
 
     char        buf[64];
     type_generate_string (buf, &t);
@@ -522,7 +522,7 @@ TEST (type_generate_string)
     u32         dims[3]      = {5, 20, 100};
     struct type t            = {.type = T_SARRAY, .sa = {.rank = 3, .dims = dims, .t = &element}};
     const char *expected     = "[5][20][100] i32";
-    u32         expected_len = (u32)strlen (expected);
+    u32         expected_len = (u32)strnlen (expected, 4096);
 
     char        buf[64];
     type_generate_string (buf, &t);
@@ -539,7 +539,7 @@ TEST (type_generate_string)
 
     struct type   t            = {.type = T_STRUCT, .st = {.len = 2, .keys = keys, .types = types}};
     const char   *expected     = "struct { x f32, y f32 }";
-    u32           expected_len = (u32)strlen (expected);
+    u32           expected_len = (u32)strnlen (expected, 4096);
 
     char          buf[64];
     type_generate_string (buf, &t);
@@ -559,7 +559,7 @@ TEST (type_generate_string)
         .un   = {.len = 2, .keys = keys, .types = types} // Using .un overlay explicitly
     };
     const char *expected     = "union { as_int i64, as_ptr u64 }";
-    u32         expected_len = (u32)strlen (expected);
+    u32         expected_len = (u32)strnlen (expected, 4096);
 
     char        buf[128];
     type_generate_string (buf, &t);
@@ -603,7 +603,7 @@ TEST (type_generate_string)
     };
 
     const char *expected     = "[2] struct { payload union { raw u8, state i32 }, tags [5] cf32 }";
-    u32         expected_len = (u32)strlen (expected);
+    u32         expected_len = (u32)strnlen (expected, 4096);
 
     // Verify type_get_string_size returns enough space for safe serialization
     u32         calculated_size = type_get_string_size (&root_type);
@@ -1113,18 +1113,17 @@ get_var_str (struct type *t, u32 *dlen, error *e)
     return NULL;                                 // LCOV_EXCL_LINE
   } // LCOV_EXCL_LINE
 
-  char *dest = (default_mem ())
-                   .table->malloc ((default_mem ()).self, (u32)len + 1, sizeof *dest, e);
+  char *dest = default_mem ().table->malloc (default_mem ().self, (u32)len + 1, sizeof *dest, e);
   if (dest == NULL) {
     error_causef (e, ERR_NOMEM, "alloc failed for type log string");
     return NULL;
   }
 
   len = type_snprintf (dest, (u32)len + 1, t);
-  if (len < 0) {                                                // LCOV_EXCL_LINE
-    (default_mem ()).table->free ((default_mem ()).self, dest); // LCOV_EXCL_LINE
-    error_causef (e, ERR_IO, "snprintf failed");                // LCOV_EXCL_LINE
-    return NULL;                                                // LCOV_EXCL_LINE
+  if (len < 0) {                                            // LCOV_EXCL_LINE
+    default_mem ().table->free (default_mem ().self, dest); // LCOV_EXCL_LINE
+    error_causef (e, ERR_IO, "snprintf failed");            // LCOV_EXCL_LINE
+    return NULL;                                            // LCOV_EXCL_LINE
   } // LCOV_EXCL_LINE
 
   *dlen = (u32)len;
@@ -1142,7 +1141,7 @@ i_log_type (struct type *t, error *e)
   }
 
   i_log_info ("%.*s\n", (int)len, var_str);
-  (default_mem ()).table->free ((default_mem ()).self, var_str);
+  default_mem ().table->free (default_mem ().self, var_str);
 
   return SUCCESS;
 }
@@ -1177,7 +1176,7 @@ keylist_movemem (struct string *src, u32 len, struct arena_alloc *alloc, error *
 static struct type **
 typelist_movemem (struct type **src, u32 len, struct arena_alloc *alloc, error *e)
 {
-  struct type **types = arena_malloc (alloc, len, sizeof *types, e);
+  struct type **types = (struct type **)arena_malloc (alloc, len, sizeof *types, e);
   if (types == NULL) {
     return NULL;
   }
@@ -2117,7 +2116,7 @@ TEST (type_print_os_sink)
 static void
 type_print_os_close (void *ctx)
 {
-  (default_mem ()).table->free ((default_mem ()).self, (struct type_printer_ostream_ctx *)ctx);
+  default_mem ().table->free (default_mem ().self, (struct type_printer_ostream_ctx *)ctx);
 }
 
 #ifndef NDEBUG
@@ -2143,7 +2142,7 @@ type_stream_printer_init (struct stream *s, struct type *t, error *e)
 {
   t_size size = type_byte_size (t);
   struct type_printer_ostream_ctx
-      *ctx = (default_mem ()).table->malloc ((default_mem ()).self, 1, sizeof *ctx + size, e);
+      *ctx = default_mem ().table->malloc (default_mem ().self, 1, sizeof *ctx + size, e);
   if (ctx == NULL) {
     return error_trace (e);
   }

@@ -27,7 +27,8 @@
  * ----------------------------------------------------------------------------
  * @brief A utility for a periodic task that occurs a fixed timer
  *
- * TODO - usage
+ * TODO: add a usage example (create, start, request_wake, stop) so callers
+ * don't have to read the tests.
  ******************************************************************************/
 
 typedef void (*periodic_task_fn) (void *ctx);

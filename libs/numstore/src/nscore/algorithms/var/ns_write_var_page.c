@@ -85,13 +85,11 @@ ns_write_var_page (struct ns_write_var_page_params *params, error *e)
   u8 *dtype_serialized = arena_malloc (&temp, tlen, 1, e);
 
   if (dtype_serialized == NULL) {
-    // Allocation failed
     return error_trace (e);
-  } else {
-    // Serialize type
-    struct serializer srlzr = srlizr_create (dtype_serialized, tlen);
-    type_serialize (&srlzr, params->var->dtype);
   }
+
+  struct serializer srlzr = srlizr_create (dtype_serialized, tlen);
+  type_serialize (&srlzr, params->var->dtype);
 
   pgno start = page_h_pgno (params->vp);
 

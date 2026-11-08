@@ -126,7 +126,7 @@ DEFINE_DBG_ASSERT (page, page_base, p, { ASSERT (p); })
 void page_init_empty (page *p, enum page_type t);
 
 // Validate
-err_t page_validate_for_db (const page *p, int page_types, error *e);
+err_t page_validate_for_db (const page *p, int flags, error *e);
 
 ////////////////////////////////////////////////////////////
 /////// Utility Macros
