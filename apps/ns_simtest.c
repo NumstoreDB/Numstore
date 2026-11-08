@@ -36,7 +36,7 @@
 #define DEFAULT_SEED        1231241123ULL
 #define DEFAULT_COMMIT_HASH "foo"
 #define DEFAULT_SEQID       10
-#define DEFAULT_FAIL_PCT    0.0f
+#define DEFAULT_FAIL_PCT    0.0F
 
 static _Atomic bool running = true;
 
@@ -190,7 +190,7 @@ parse_action (const char *s, enum ns_action_type *out)
   }
 
   for (int a = 0; a < NSS_AT_LEN; ++a) {
-    if (action_names[a] && ieqn (s, action_names[a], SIZE_MAX)) {
+    if (action_names[a] != NULL && ieqn (s, action_names[a], SIZE_MAX)) {
       *out = (enum ns_action_type)a;
       return true;
     }
@@ -214,7 +214,6 @@ main (int argc, char **argv)
   // All actions enabled by default
   memset (params.enabled, 1, sizeof (params.enabled));
 
-  // Parse arguments
   for (int i = 1; i < argc; ++i) {
     const char *arg = argv[i];
     const char *v   = NULL;
@@ -223,38 +222,38 @@ main (int argc, char **argv)
       print_usage (stdout, argv[0]);
       return EXIT_SUCCESS;
     } else if (take_flag ("--dbname", argc, argv, &i, &v)) {
-      if (!v || !*v) {
+      if (v == NULL || *v == '\0') {
         return usage_error (argv[0], "%s requires a value", arg);
       }
       dbname = v;
     } else if (take_flag ("--duration", argc, argv, &i, &v)) {
-      if (!v || !*v) {
+      if (v == NULL || *v == '\0') {
         return usage_error (argv[0], "%s requires a value", arg);
       }
       if (!parse_u64 (v, INT_MAX, &duration) || duration == 0) {
         return usage_error (argv[0], "invalid duration '%s' (must be > 0)", v);
       }
     } else if (take_flag ("--seed", argc, argv, &i, &v)) {
-      if (!v || !*v) {
+      if (v == NULL || *v == '\0') {
         return usage_error (argv[0], "%s requires a value", arg);
       }
       if (!parse_u64 (v, UINT64_MAX, &seed)) {
         return usage_error (argv[0], "invalid seed '%s'", v);
       }
     } else if (take_flag ("--commit-hash", argc, argv, &i, &v)) {
-      if (!v || !*v) {
+      if (v == NULL || *v == '\0') {
         return usage_error (argv[0], "%s requires a value", arg);
       }
       commit_hash = v;
     } else if (take_flag ("--seqid", argc, argv, &i, &v)) {
-      if (!v || !*v) {
+      if (v == NULL || *v == '\0') {
         return usage_error (argv[0], "%s requires a value", arg);
       }
       if (!parse_u64 (v, UINT32_MAX, &seqid)) {
         return usage_error (argv[0], "invalid seqid '%s'", v);
       }
     } else if (take_flag ("--fail-percent", argc, argv, &i, &v)) {
-      if (!v || !*v) {
+      if (v == NULL || *v == '\0') {
         return usage_error (argv[0], "%s requires a value", arg);
       }
       if (!parse_prob (v, &fail_pct)) {
@@ -263,7 +262,7 @@ main (int argc, char **argv)
     } else if (take_flag ("--disable", argc, argv, &i, &v)) {
       enum ns_action_type a;
 
-      if (!v || !*v) {
+      if (v == NULL || *v == '\0') {
         return usage_error (argv[0], "%s requires a value", arg);
       }
       if (!parse_action (v, &a)) {
@@ -279,7 +278,7 @@ main (int argc, char **argv)
   // At least one action must remain
   bool any_enabled = false;
   for (int a = 0; a < NSS_AT_LEN; ++a) {
-    any_enabled = any_enabled || params.enabled[a];
+    any_enabled = any_enabled || params.enabled[a] != 0;
   }
 
   if (!any_enabled) {

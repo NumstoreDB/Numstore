@@ -36,23 +36,24 @@ main (int argc, char **argv)
   // printed is then genuinely the last line reached.
   setvbuf (stdout, NULL, _IONBF, 0);
 
-  u64 seed = strtoul(argv[1], NULL, 10);
+  u64 seed = strtoull(argv[1], NULL, 10);
   const char *filter = (argc == 3) ? argv[2] : NULL;
 
-  srand(seed);
+  // srand only takes an unsigned, so a seed past UINT_MAX keeps its low bits
+  srand((unsigned)seed);
 
   int ntests = 0;
   error   e = error_create ();
 
   // The harness runs on the real OS - each test body gets its own
   struct i_os harness_os;
-  if (system_os_create (default_mem (), &harness_os, &e) != SUCCESS)
+  if (system_os_create (default_mem (), &harness_os, &e) < 0)
   {
     return -1;
   }
 
   i_timer timer;
-  if (harness_os.table->timer_create (harness_os.self, &timer, &e) != SUCCESS)
+  if (harness_os.table->timer_create (harness_os.self, &timer, &e) < 0)
   {
     system_os_free (harness_os);
     return -1;
@@ -66,7 +67,7 @@ main (int argc, char **argv)
   );
   harness_os.table->timer_free (harness_os.self, timer.self);
   system_os_free (harness_os);
-  if (failed)
+  if (failed > 0)
   {
     i_log_failure ("FAILED TESTS (%d):\n", failed);
     for (int i = 0; i < failed; i++)

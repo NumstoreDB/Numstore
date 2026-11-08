@@ -10,10 +10,12 @@ OS_BACKENDS = ["posix", "windows"]
 def gen_tests(template_path, output_path, platform):
     pattern = re.compile(r"TEST\s*\(\s*(\w+)\s*\)")
 
-    skip = [Path("csrc/core/os") / b for b in OS_BACKENDS if b != platform]
+    skip = [
+        Path("../libs/numstore/src/core/os") / b for b in OS_BACKENDS if b != platform
+    ]
 
     tests = []
-    for root in ["csrc"]:
+    for root in ["../libs/numstore/src"]:
         root = Path(root)
         if not root.exists():
             print(f"Error: Directory '{root}' does not exist.", file=sys.stderr)

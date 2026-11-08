@@ -13,7 +13,7 @@
 /// limitations under the License.
 
 /*
- * type_compile_cli.c
+ * resolve_type_ref.c
  *
  * Usage:
  *   ./resolve_type_ref "<type string>" "<type ref string>"

@@ -61,7 +61,7 @@ typedef struct
 } pp_params;
 
 static void
-_page_print (struct pager *p, const pgno pg, const pp_params params, error *e)
+page_print_one (struct pager *p, const pgno pg, const pp_params params, error *e)
 {
   page_h cur = page_h_create ();
 
@@ -102,29 +102,29 @@ page_print (const char *fname, const pp_params params)
     bool contains;
     arr_contains (params.pgnos, params.pglen, i, contains);
     if (params.pglen == 0 || contains) {
-      _page_print (p, i, params, &e);
+      page_print_one (p, i, params, &e);
     }
   }
 
-  pgr_close (p, &e);
+  if (pgr_close (p, &e) < 0) {
+    error_log_consume (&e);
+  }
   system_os_free (os);
 }
 
 static int
 parse_params (const int argc, char *argv[], pp_params *params)
 {
-  // Initialize
   params->pgnos = NULL;
   params->pglen = 0;
   params->flag  = 0;
 
   u32 capacity  = 0;
 
-  // Skip program name (argv[0])
+  // argv[0] is the program and argv[1] the file
   for (int i = 2; i < argc; i++) {
     char *arg = argv[i];
 
-    // Check for flags
     if (strcmp (arg, "IN") == 0) {
       params->flag |= PG_INNER_NODE;
     } else if (strcmp (arg, "DL") == 0) {
@@ -146,7 +146,7 @@ parse_params (const int argc, char *argv[], pp_params *params)
 
       if (params->pglen >= capacity) {
         capacity       = capacity == 0 ? 4 : capacity * 2;
-        u32 *new_pgnos = realloc (params->pgnos, capacity * sizeof (u32));
+        u32 *new_pgnos = realloc (params->pgnos, capacity * sizeof *new_pgnos);
         if (new_pgnos == NULL) {
           free (params->pgnos);
           return -1;
@@ -170,7 +170,7 @@ main (const int argc, char **argv)
   }
 
   pp_params params;
-  if (argc == 1 || parse_params (argc, argv, &params)) {
+  if (argc == 1 || parse_params (argc, argv, &params) != 0) {
     print_usage (stderr, argv[0]);
     return -1;
   }
@@ -178,6 +178,7 @@ main (const int argc, char **argv)
   char *fname = argv[1];
 
   page_print (fname, params);
+  free (params.pgnos);
 
   return 0;
 }

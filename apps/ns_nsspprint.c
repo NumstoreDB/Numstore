@@ -46,7 +46,7 @@ print_usage (FILE *out, const char *prog)
 }
 
 static void
-_simple_page_print (struct file_pager *p, const pgno pg, error *e)
+simple_page_print_one (struct file_pager *p, const pgno pg, error *e)
 {
   page raw;
   raw.pg = pg;
@@ -78,10 +78,12 @@ simple_page_print (const char *fname)
   }
 
   for (u32 i = 0; i < fpgr_get_npages (fp); ++i) {
-    _simple_page_print (fp, i, &e);
+    simple_page_print_one (fp, i, &e);
   }
 
-  fpgr_close (fp, &e);
+  if (fpgr_close (fp, &e) < 0) {
+    error_log_consume (&e);
+  }
   system_os_free (os);
 }
 

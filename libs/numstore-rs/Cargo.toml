@@ -1,0 +1,12 @@
+[package]
+name = "numstore-rs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "numstore_rs"
+crate-type = ["staticlib"]
+
+[build-dependencies]
+bindgen = "0.71.0"

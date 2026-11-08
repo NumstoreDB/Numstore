@@ -13,10 +13,10 @@
 /// limitations under the License.
 
 /*
- * type_compile_cli.c
+ * print_type.c
  *
  * Usage:
- *   ./type_compile_cli "<type string>"
+ *   ./print_type "<type string>"
  *
  * Compiles the given type string and prints the compiled type to stdout.
  */

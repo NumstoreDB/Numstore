@@ -93,7 +93,7 @@ main (const int argc, char **argv)
 {
   struct args args;
 
-  if (parse_args (&args, argc, argv)) {
+  if (parse_args (&args, argc, argv) != 0) {
     usage (stderr, argc > 0 ? argv[0] : "print_all_vars");
     return EXIT_FAILURE;
   }
@@ -115,13 +115,16 @@ main (const int argc, char **argv)
 
   printf ("[\n");
   if (ns_visit_variables (p, print_variable, &args, &e) < 0) {
-    pgr_close (p, &e);
+    // Already failing - report the visit error, not the close
+    (void)pgr_close (p, &e);
     system_os_free (os);
     return error_trace (&e);
   }
   printf ("null ]\n");
 
-  pgr_close (p, &e);
+  if (pgr_close (p, &e) < 0) {
+    error_log_consume (&e);
+  }
   system_os_free (os);
 
   return EXIT_SUCCESS;

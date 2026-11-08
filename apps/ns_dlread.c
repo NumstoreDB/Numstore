@@ -115,8 +115,8 @@ main (const int argc, char **argv)
     return -1;
   }
 
-  int   pg    = atoi (argv[2]);
-  char *fname = argv[1];
+  const pgno pg    = (pgno)strtoull (argv[2], NULL, 10);
+  char      *fname = argv[1];
 
   dl_contents (stdout, fname, pg);
 

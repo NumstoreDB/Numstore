@@ -13,10 +13,10 @@
 /// limitations under the License.
 
 /*
- * query_compile_cli.c
+ * print_query.c
  *
  * Usage:
- *   ./query_compile_cli "<query string>"
+ *   ./print_query "<query string>"
  *
  * Compiles the given query string and prints the compiled query to stdout.
  */
@@ -119,10 +119,10 @@ main (int argc, char **argv)
   printf ("%s", query_type_name (q.type));
 
   struct string vname;
-  if (query_vname_of_interest (&vname, &q, &e) == SUCCESS) {
-    printf (" %.*s", vname.len, vname.data);
-  } else {
+  if (query_vname_of_interest (&vname, &q, &e) < 0) {
     error_log_consume (&e);
+  } else {
+    printf (" %.*s", (int)vname.len, vname.data);
   }
   printf ("\n");
 

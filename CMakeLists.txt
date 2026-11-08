@@ -1,17 +1,14 @@
 cmake_minimum_required(VERSION 3.20)
 
+# Project version parsing
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/version.txt" NUMSTORE_VERSION)
 string(STRIP "${NUMSTORE_VERSION}" NUMSTORE_VERSION)
 string(REGEX REPLACE "^v" "" NUMSTORE_VERSION "${NUMSTORE_VERSION}")
-
-# project() only takes digits, so a pre-release suffix (1.5.0rc1) is trimmed
-# here. The wheel still gets the full string from version.txt.
 string(
     REGEX MATCH "^[0-9]+(\\.[0-9]+)*"
     NUMSTORE_CMAKE_VERSION
     "${NUMSTORE_VERSION}"
 )
-
 project(numstore VERSION ${NUMSTORE_CMAKE_VERSION} LANGUAGES C)
 
 include(GNUInstallDirs)
@@ -28,79 +25,13 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 #####################################################################
 ### The numstore library
-# csrc/ also holds the entry points below, so the library collects sources
-# from its two source trees rather than everything under csrc/.
-set(LIBNUMSTORE_SRCS "")
-add_subdirectory(csrc/core)
-add_subdirectory(csrc/nscore)
+add_subdirectory(libs/numstore)
 
-# csrc/numstore.c is the public C API (include/numstore.h). pynumstore talks
-# to nscore/nsdb directly, so a wheel build leaves it out entirely.
-if(NOT SKBUILD)
-    list(APPEND LIBNUMSTORE_SRCS csrc/numstore.c)
-endif()
-
-add_library(numstore STATIC ${LIBNUMSTORE_SRCS})
-add_library(numstore::numstore ALIAS numstore)
-
-target_include_directories(
-    numstore
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/csrc>
-        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-)
-set_target_properties(numstore PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-if(MSVC)
-    target_compile_options(numstore PUBLIC /experimental:c11atomics)
-endif()
-
-# Prefer using -pthread instead of -lpthread
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
-target_link_libraries(numstore PUBLIC Threads::Threads)
-
-# long double / complex helpers are in libm on glibc.
-if(UNIX AND NOT APPLE)
-    target_link_libraries(numstore PUBLIC m)
-endif()
-
-# Install
-install(
-    TARGETS numstore
-    EXPORT numstoreTargets
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-)
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-
-# The installed package carries the version from version.txt, so a consumer can
-# pin it with find_package(numstore 1.5).
-include(CMakePackageConfigHelpers)
-
-configure_package_config_file(
-    cmake/numstoreConfig.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/numstoreConfig.cmake
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/numstore
-)
-write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/numstoreConfigVersion.cmake
-    COMPATIBILITY SameMajorVersion
-)
-
-install(
-    EXPORT numstoreTargets
-    FILE numstoreTargets.cmake
-    NAMESPACE numstore::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/numstore
-)
-install(
-    FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/numstoreConfig.cmake
-        ${CMAKE_CURRENT_BINARY_DIR}/numstoreConfigVersion.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/numstore
-)
+#####################################################################
+### Rust setup
+include(cmake/Rust.cmake)
+corrosion_set_env_vars(numstore_rs NUMSTORE_LIB_DIR=$<TARGET_FILE_DIR:numstore>)
+add_dependencies(cargo-build_numstore_rs numstore)
 
 #####################################################################
 ### pynumstore
@@ -113,7 +44,7 @@ if(SKBUILD)
         COMPONENTS Interpreter Development.Module NumPy
     )
 
-    python_add_library(_pynumstore MODULE WITH_SOABI csrc/ns_pynumstore.c)
+    python_add_library(_pynumstore MODULE WITH_SOABI src/ns_pynumstore.c)
     target_link_libraries(_pynumstore PRIVATE numstore Python::NumPy)
     set_target_properties(_pynumstore PROPERTIES C_VISIBILITY_PRESET hidden)
 
@@ -135,41 +66,6 @@ foreach(sample IN LISTS NUMSTORE_SAMPLES)
     add_executable(${name} ${sample})
     target_link_libraries(${name} PRIVATE numstore)
 endforeach()
-
-#####################################################################
-### unit_tests
-### gen_tests.py scrapes TEST(...) out of csrc/ and writes the main().
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    find_package(Python3 COMPONENTS Interpreter REQUIRED)
-
-    set(_unit_tests_c ${CMAKE_CURRENT_BINARY_DIR}/unit_tests.c)
-
-    # Which os backend's tests to scrape. WIN32 is the target, not the host, so
-    # this stays right under a mingw cross build.
-    if(WIN32)
-        set(_unit_tests_platform windows)
-    else()
-        set(_unit_tests_platform posix)
-    endif()
-
-    add_custom_command(
-        OUTPUT ${_unit_tests_c}
-        COMMAND
-            ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/apps/gen_tests.py
-            ${CMAKE_CURRENT_SOURCE_DIR}/apps/unit_tests.c.in ${_unit_tests_c}
-            ${_unit_tests_platform}
-        DEPENDS
-            ${CMAKE_CURRENT_SOURCE_DIR}/apps/gen_tests.py
-            ${CMAKE_CURRENT_SOURCE_DIR}/apps/unit_tests.c.in
-            ${LIBNUMSTORE_SRCS}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMENT "Generating unit_tests.c"
-        VERBATIM
-    )
-
-    add_executable(unit_tests ${_unit_tests_c})
-    target_link_libraries(unit_tests PRIVATE numstore)
-endif()
 
 #####################################################################
 ### docs

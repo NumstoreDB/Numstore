@@ -67,9 +67,13 @@ walf_print (const char *fname)
     return;
   }
 
-  wal_forward_scan (wf, LSN_NULL, wal_print_func, NULL, &e);
+  if (wal_forward_scan (wf, LSN_NULL, wal_print_func, NULL, &e) < 0) {
+    error_log_consume (&e);
+  }
 
-  wal_close (wf, &e);
+  if (wal_close (wf, &e) < 0) {
+    error_log_consume (&e);
+  }
   system_os_free (os);
 }
 
