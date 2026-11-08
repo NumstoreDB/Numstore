@@ -20,6 +20,10 @@
 
 #include <string.h>
 
+#if defined(__x86_64__) && !defined(__ARM_FEATURE_CRC32)
+#  include <cpuid.h>
+#endif
+
 /******************************************************************************
  *  Platform hooks
  ******************************************************************************/
@@ -173,7 +177,10 @@ crc_init (void)
 
 #ifdef CRC_HW
 #  if defined(__x86_64__) && !defined(__ARM_FEATURE_CRC32)
-  crc_use_hw = __builtin_cpu_supports ("sse4.2");
+  /* Not __builtin_cpu_supports: it needs ___cpu_model from the compiler
+   * runtime, which Rust's link line (-nodefaultlibs) doesn't provide */
+  unsigned eax, ebx, ecx, edx;
+  crc_use_hw = __get_cpuid (1, &eax, &ebx, &ecx, &edx) && (ecx & bit_SSE4_2);
 #  else
   crc_use_hw = 1;
 #  endif

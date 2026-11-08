@@ -2,8 +2,7 @@ name: Wheels
 
 on:
   push:
-    branches: [develop]
-  pull_request:
+    branches: [main]
   workflow_dispatch:
   # release.yml calls this to build the artifacts it publishes.
   workflow_call:
