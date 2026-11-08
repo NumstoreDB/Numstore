@@ -169,6 +169,8 @@ StyleCopReport.xml
 *_i.c
 *_p.c
 *_h.h
+# ...but this one is ours, not a MIDL header.
+!libs/numstore/src/nscore/page/ns_page_h.h
 *.meta
 *.iobj
 *.ipdb

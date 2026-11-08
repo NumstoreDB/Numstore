@@ -36,8 +36,11 @@ foreach(md IN LISTS _docs_md)
             --lua-filter=${_pandoc}/md-links.lua --css=style.css
             --include-before-body=${_pandoc}/_sidebar.html
             --metadata=pagetitle=${_title}
-        DEPENDS ${md} ${_pandoc}/template.html ${_pandoc}/md-links.lua
-                ${_pandoc}/_sidebar.html
+        DEPENDS
+            ${md}
+            ${_pandoc}/template.html
+            ${_pandoc}/md-links.lua
+            ${_pandoc}/_sidebar.html
         COMMENT "pandoc ${name}"
         VERBATIM
     )
