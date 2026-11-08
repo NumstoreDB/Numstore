@@ -6,7 +6,7 @@ from pathlib import Path
 import pynumstore as ns
 
 # The one source of truth for both the C and the Python version.
-VERSION_TXT = Path(__file__).resolve().parent.parent / "version.txt"
+VERSION_TXT = Path(__file__).resolve().parents[3] / "version.txt"
 
 
 def _expected():
