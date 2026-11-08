@@ -42,12 +42,6 @@ test-extras = ["test"]
 test-sources = ["libs/pynumstore/tests", "pyproject.toml", "version.txt"]
 test-command = "python -m pytest libs/pynumstore/tests"
 
-# Linux wheels build inside manylinux/musllinux containers, which have no Rust.
-# The build links the numstore-rs crate, so install a toolchain first.
-[tool.cibuildwheel.linux]
-before-all = "curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal"
-environment = { PATH = "$HOME/.cargo/bin:$PATH" }
-
 [tool.pytest.ini_options]
 testpaths = ["libs/pynumstore/tests"]
 pythonpath = ["libs/pynumstore/tests"]

@@ -28,12 +28,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 add_subdirectory(libs/numstore)
 
 #####################################################################
-### Rust setup
-include(cmake/Rust.cmake)
-corrosion_set_env_vars(numstore_rs NUMSTORE_LIB_DIR=$<TARGET_FILE_DIR:numstore>)
-add_dependencies(_cargo-build_numstore_rs numstore)
-
-#####################################################################
 ### pynumstore
 ### scikit-build-core defines SKBUILD, and a wheel build wants nothing else.
 if(SKBUILD)
@@ -52,6 +46,14 @@ if(SKBUILD)
 
     return()
 endif()
+
+#####################################################################
+### Rust setup
+### Not part of a wheel build: the extension is C only, and bindgen needs
+### libclang, which the wheel build containers lack.
+include(cmake/Rust.cmake)
+corrosion_set_env_vars(numstore_rs NUMSTORE_LIB_DIR=$<TARGET_FILE_DIR:numstore>)
+add_dependencies(_cargo-build_numstore_rs numstore)
 
 #####################################################################
 ### apps
