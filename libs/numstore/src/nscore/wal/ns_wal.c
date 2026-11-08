@@ -277,12 +277,18 @@ void
 wal_ensure_flush_next (struct wal *w)
 {
   DBG_ASSERT (wal, w);
-  u8  buffer[WAL_BUFFER_CAP] = {0};
-  u32 len                    = cbuffer_len (&w->ostream->buffer);
+
+  // Zero padding in small chunks - a WAL_BUFFER_CAP array overflows the 1 MiB
+  // default stack on Windows
+  u8  zeros[4096] = {0};
+  u32 len         = cbuffer_len (&w->ostream->buffer);
   ASSERT (len <= WAL_BUFFER_CAP);
+
   u32 towrite = WAL_BUFFER_CAP - len;
-  if (towrite > 0) {
-    walos_write_all (w->ostream, NULL, buffer, towrite);
+  while (towrite > 0) {
+    const u32 n = MIN (towrite, (u32)sizeof (zeros));
+    walos_write_all (w->ostream, NULL, zeros, n);
+    towrite -= n;
   }
 }
 #endif
