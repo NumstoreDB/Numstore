@@ -52,41 +52,24 @@ TEST (ht_insert_test_regression_trigger_swap)
 
   test_assert_int_equal (ht_insert_test (&ht, (hdata_test){.key = 0, .value = 0}), HTIR_SUCCESS);
 
-  bool has_bug = false;
+  // Everything else is really unpredictable because the
+  // +i just screws up everything
+  test_assert_int_equal (ht.elems[0].data.key, TEST_TABLE_LEN);
+  test_assert_int_equal (ht.elems[0].dib, 0);
+  test_assert_int_equal (ht.elems[0].present, 1);
 
-  if (has_bug) {
-    test_assert_int_equal (ht.elems[0].data.key, TEST_TABLE_LEN);
-    test_assert_int_equal (ht.elems[0].dib, 0);
-    test_assert_int_equal (ht.elems[0].present, 1);
+  test_assert_int_equal (ht.elems[1].data.key, 0);
+  test_assert_int_equal (ht.elems[1].dib, 1);
+  test_assert_int_equal (ht.elems[1].present, 1);
 
-    test_assert_int_equal (ht.elems[1].data.key, 0);
-    test_assert_int_equal (ht.elems[1].dib, 1);
-    test_assert_int_equal (ht.elems[1].present, 1);
+  test_assert_int_equal (ht.elems[2].data.key, TEST_TABLE_LEN + 1);
+  test_assert_int_equal (ht.elems[2].dib, 1);
+  test_assert_int_equal (ht.elems[2].present, 1);
 
-    test_assert_int_equal (ht.elems[3].data.key, TEST_TABLE_LEN + 1);
-    test_assert_int_equal (ht.elems[3].dib, 1);
-    test_assert_int_equal (ht.elems[3].present, 1);
-
-    // Everything else is really unpredictable because the
-    // +i just screws up everything
-  } else {
-    test_assert_int_equal (ht.elems[0].data.key, TEST_TABLE_LEN);
-    test_assert_int_equal (ht.elems[0].dib, 0);
-    test_assert_int_equal (ht.elems[0].present, 1);
-
-    test_assert_int_equal (ht.elems[1].data.key, 0);
-    test_assert_int_equal (ht.elems[1].dib, 1);
-    test_assert_int_equal (ht.elems[1].present, 1);
-
-    test_assert_int_equal (ht.elems[2].data.key, TEST_TABLE_LEN + 1);
-    test_assert_int_equal (ht.elems[2].dib, 1);
-    test_assert_int_equal (ht.elems[2].present, 1);
-
-    for (u32 i = 3; i < TEST_TABLE_LEN; ++i) {
-      test_assert_int_equal (ht.elems[i].data.key, i);
-      test_assert_int_equal (ht.elems[i].dib, 0);
-      test_assert_int_equal (ht.elems[i].present, 1);
-    }
+  for (u32 i = 3; i < TEST_TABLE_LEN; ++i) {
+    test_assert_int_equal (ht.elems[i].data.key, i);
+    test_assert_int_equal (ht.elems[i].dib, 0);
+    test_assert_int_equal (ht.elems[i].present, 1);
   }
 }
 #endif
