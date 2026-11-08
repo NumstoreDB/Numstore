@@ -202,7 +202,7 @@ other (tests that open two databases, or that must not collide).
 Run clang-tidy on a few files, using the `.clang-tidy` config in the repo:
 
 ```sh
-/opt/homebrew/opt/llvm/bin/clang-tidy -p . csrc/core/ns_foo.c
+/opt/homebrew/opt/llvm/bin/clang-tidy -p . libs/numstore/src/core/ns_foo.c
 ```
 
 These are usually worth fixing:

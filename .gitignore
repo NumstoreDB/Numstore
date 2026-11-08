@@ -1121,7 +1121,7 @@ gmon.out
 *_example
 docgen_tmp/
 
-# The samples and the csrc/numstore.c API tests open databases by bare name in
+# The samples and the libs/numstore/src/numstore.c API tests open databases by bare name in
 # the CWD. Anchored for the same reason /test is.
 /ns_sample1_crud
 /sample_big_file

@@ -1,3 +1,5 @@
+use std::ffi::CString;
+
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 struct Database {
@@ -8,7 +10,7 @@ pub fn rs_ns_open(fname: &str) -> *mut nsdb_t {
     let c_fname = CString::new(fname).expect("Error");
 
     unsafe {
-        return ns_open(c_fname.as_ptr());
+        return ns_open(c_fname.as_ptr() as *const i8);
     };
 }
 
@@ -17,7 +19,7 @@ impl Database {
         assert!(fname.ends_with('\0'));
 
         Database {
-            handle: unsafe { ns_open(fname.as_ptr()) },
+            handle: rs_ns_open(fname),
         }
     }
 }

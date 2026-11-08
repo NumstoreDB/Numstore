@@ -48,7 +48,7 @@ Good comments
 Naming the steps of a well known protocol
 -----------------------------------------
 
-`csrc/nscore/pager/ns_pgr_commit.c`, `pgr_commit`:
+`libs/numstore/src/nscore/pager/ns_pgr_commit.c`, `pgr_commit`:
 
 ```c
   // COMMIT
@@ -75,7 +75,7 @@ function would.
 Explaining code that looks wrong
 --------------------------------
 
-`csrc/core/os/posix/ns_posix.c`, `sys_prealloc`:
+`libs/numstore/src/core/os/posix/ns_posix.c`, `sys_prealloc`:
 
 ```c
   // macOS has no posix_fallocate. F_PREALLOCATE reserves blocks but leaves
@@ -90,7 +90,7 @@ could delete. The comment says it's what stops the file from shrinking.
 Showing the arithmetic is safe
 ------------------------------
 
-`csrc/core/os/windows/ns_windows.c`:
+`libs/numstore/src/core/os/windows/ns_windows.c`:
 
 ```c
   // Split into whole seconds + remainder so elapsed * 1e9 can't overflow.
@@ -104,7 +104,7 @@ It gives the reason for the odd split, and the bound that makes it correct.
 Ownership and lifetime
 ----------------------
 
-`csrc/ns_pynumstore.c`:
+`libs/pynumstore/ns_pynumstore.c`:
 
 ```c
   // The database only keeps a pointer to its error, so that error has to
@@ -118,7 +118,7 @@ says where the matching free is.
 Why a design choice was made
 ----------------------------
 
-`csrc/core/os/faulty/ns_faulty_os.c`:
+`libs/numstore/src/core/os/faulty/ns_faulty_os.c`:
 
 ```c
 // The i_mem counterpart of the faulty OS
@@ -132,7 +132,7 @@ anyone asks it.
 Recording a bug fix
 -------------------
 
-`csrc/core/ns_gr_lock.c`, above `gr_lock_is_x_blocks`:
+`libs/numstore/src/core/ns_gr_lock.c`, above `gr_lock_is_x_blocks`:
 
 ```c
 // This used to sleep 50ms and then sample "is thread 2 still blocked?", which
@@ -144,7 +144,7 @@ Recording a bug fix
 It records what the old version did, how it failed, and why the new one can't
 fail the same way. That stops someone from putting the sleep back.
 
-`csrc/nscore/testing/regressions/0002_create_crash_close_delete.c`:
+`libs/numstore/src/nscore/testing/regressions/0002_create_crash_close_delete.c`:
 
 ```c
   // Delete the variable
@@ -163,7 +163,7 @@ The `CAUSE:` sits on the exact step that used to fail.
 Why a test exists
 -----------------
 
-`csrc/core/ns_crc.c`:
+`libs/numstore/src/core/ns_crc.c`:
 
 ```c
 // Splitting a buffer anywhere must not change the result, which is what lets

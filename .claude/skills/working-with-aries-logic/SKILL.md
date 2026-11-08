@@ -1,6 +1,6 @@
 ---
 name: working-with-aries-logic
-description: The ARIES recovery algorithm (WAL, LSNs, CLRs, repeating history, analysis/redo/undo, fuzzy checkpoints, nested top actions) and how it maps onto Numstore's pager, WAL, transaction table and dirty page table. Use whenever you read, change, debug or test logging, commit, rollback, checkpoint, crash or restart recovery code (csrc/nscore/pager, wal, txn_table, dpg_table), or reason about whether a log or page state is correct after a crash.
+description: The ARIES recovery algorithm (WAL, LSNs, CLRs, repeating history, analysis/redo/undo, fuzzy checkpoints, nested top actions) and how it maps onto Numstore's pager, WAL, transaction table and dirty page table. Use whenever you read, change, debug or test logging, commit, rollback, checkpoint, crash or restart recovery code (libs/numstore/src/nscore/pager, wal, txn_table, dpg_table), or reason about whether a log or page state is correct after a crash.
 ---
 
 Working with ARIES logic

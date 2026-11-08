@@ -1,6 +1,6 @@
 ---
 name: writing-c-unit-tests
-description: How to write, place and run C tests in Numstore - the TEST/TEST_CASE framework, test_ctx, assertions, fixtures, test marks, fault injection, crash capture, regression tests and the simulation harness. Use whenever you add, change or review a C test under csrc/.
+description: How to write, place and run C tests in Numstore - the TEST/TEST_CASE framework, test_ctx, assertions, fixtures, test marks, fault injection, crash capture, regression tests and the simulation harness. Use whenever you add, change or review a C test under libs/numstore/src/.
 ---
 
 Writing C tests in Numstore
@@ -37,19 +37,19 @@ TEST (wal_open)
 ```
 
 There is no registration. `apps/gen_tests.py` scrapes every `TEST (name)`
-under `csrc/` and generates `unit_tests.c`. Test names must be unique across
+under `libs/numstore/src/` and generates `unit_tests.c`. Test names must be unique across
 the whole tree; prefix them with the module (`wal_`, `pgr_`, `lockt_`).
 
 Other places:
 
-| Kind                         | Location                                        |
-| ---------------------------- | ----------------------------------------------- |
-| Unit tests                   | bottom of the `.c` under test                   |
-| End to end ARIES / crash     | `csrc/nscore/testing/ns_aries_tests.c`          |
-| Public API (`ns_*`) txn flows | `csrc/nscore/testing/numstore/NNNN_*.c`        |
-| Regression tests             | `csrc/nscore/testing/regressions/NNNN_*.c`      |
-| Multithreaded stress         | next to the algorithm, e.g. `algorithms/numstore/tests/` |
-| Randomized simulation        | `csrc/nscore/testing/simulation/`, run by `apps/ns_simtest.c` |
+| Kind                          | Location                                                                   |
+| ----------------------------- | -------------------------------------------------------------------------- |
+| Unit tests                    | bottom of the `.c` under test                                              |
+| End to end ARIES / crash      | `libs/numstore/src/nscore/testing/ns_aries_tests.c`                        |
+| Public API (`ns_*`) txn flows | `libs/numstore/src/nscore/testing/numstore/NNNN_*.c`                       |
+| Regression tests              | `libs/numstore/src/nscore/testing/regressions/NNNN_*.c`                    |
+| Multithreaded stress          | next to the algorithm, e.g. `algorithms/numstore/tests/`                   |
+| Randomized simulation         | `libs/numstore/src/nscore/testing/simulation/`, run by `apps/ns_simtest.c` |
 
 New files under `testing/` must be added to that directory's `CMakeLists.txt`.
 
@@ -245,7 +245,7 @@ Run it under `make valgrind-unit` or `make leaks-unit` too.
 Regression tests
 ----------------
 
-Every fixed bug gets one in `csrc/nscore/testing/regressions/`, named
+Every fixed bug gets one in `libs/numstore/src/nscore/testing/regressions/`, named
 `NNNN_short_description.c` with the next free number, test name matching the
 file name. Keep it the smallest sequence that reproduces the bug, and put a
 `CAUSE:` comment at the step that used to fail:

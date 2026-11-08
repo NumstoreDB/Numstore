@@ -185,7 +185,7 @@ test-unit` and `make release-package` on every push.
 `./build/debug/bin/unit_tests 123142 wal` runs only the tests whose name
 contains `wal`. It exists in debug builds only: its `main` is generated at
 configure time by `apps/gen_tests.py`, which scrapes every `TEST(...)` in
-`csrc/`.
+`libs/numstore/src/`.
 
 `ns_simtest` drives a database with random operations, checks it against a
 reference model and crashes it at random:

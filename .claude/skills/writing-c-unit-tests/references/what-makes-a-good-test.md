@@ -326,7 +326,7 @@ reasoning is in
 A parameterized table
 ---------------------
 
-`csrc/core/ns_tests.c`, `f16_to_f32_normals_and_specials`:
+`libs/numstore/src/core/ns_tests.c`, `f16_to_f32_normals_and_specials`:
 
 ```c
 static const struct
@@ -365,7 +365,7 @@ subnormals have their own tests because their checks don't fit the row shape.
 A fail_after sweep
 ------------------
 
-`csrc/core/ns_ext_array.c`, `ext_array_insert_fail_nomem`:
+`libs/numstore/src/core/ns_ext_array.c`, `ext_array_insert_fail_nomem`:
 
 ```c
   do {
@@ -406,7 +406,7 @@ right bytes. The full rules are in
 A threaded test with no timing assumptions
 ------------------------------------------
 
-`csrc/core/ns_gr_lock.c`, `gr_lock_is_x_blocks`:
+`libs/numstore/src/core/ns_gr_lock.c`, `gr_lock_is_x_blocks`:
 
 ```c
   // Thread 1 holds IS until we release it, so once thread 2 is on the waiter
@@ -441,7 +441,7 @@ does `i_sleep_ms (10)` and then asserts the second thread hasn't locked.
 A regression test
 -----------------
 
-`csrc/nscore/testing/regressions/0002_create_crash_close_delete.c`:
+`libs/numstore/src/nscore/testing/regressions/0002_create_crash_close_delete.c`:
 
 ```c
 TEST (0002_create_crash_close_delete)
@@ -487,7 +487,7 @@ database, uses the public API, has a one-line comment on each step, and has a
 A narrated unit test
 --------------------
 
-`csrc/core/ns_slab_alloc.c`, `slab_alloc_free_middle_slab`:
+`libs/numstore/src/core/ns_slab_alloc.c`, `slab_alloc_free_middle_slab`:
 
 ```c
   // Setup - three full slabs of two items: head -> slab3 -> slab2 -> slab1

@@ -38,6 +38,11 @@ jobs:
       # Check out the code
       - uses: actions/checkout@v4
 
+      # The build links the numstore-rs crate. Linux wheels install Rust inside
+      # the container instead (see [tool.cibuildwheel.linux] in pyproject.toml).
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
       # Execute build wheels
       - name: Build Wheels 
         uses: pypa/cibuildwheel@v4.3.5
