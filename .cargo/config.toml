@@ -1,0 +1,4 @@
+# Default for rust-analyzer / plain `cargo check`. CMake (corrosion) sets
+# NUMSTORE_LIB_DIR itself, and [env] never overrides an existing variable.
+[env]
+NUMSTORE_LIB_DIR = { value = "build/debug/lib", relative = true }

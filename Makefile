@@ -244,6 +244,7 @@ format:
 	-clang-format -i $(C_SRCS) $(H_SRCS)
 	-gersemi -i --no-warn-about-unknown-commands $(CMAKE_SRCS)
 	-ruff format $(PY_SRCS)
+	-cargo fmt --all
 
 .PHONY: clean 
 clean: clean-c clean-python
