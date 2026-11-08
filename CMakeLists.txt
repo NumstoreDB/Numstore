@@ -31,7 +31,7 @@ add_subdirectory(libs/numstore)
 ### Rust setup
 include(cmake/Rust.cmake)
 corrosion_set_env_vars(numstore_rs NUMSTORE_LIB_DIR=$<TARGET_FILE_DIR:numstore>)
-add_dependencies(cargo-build_numstore_rs numstore)
+add_dependencies(_cargo-build_numstore_rs numstore)
 
 #####################################################################
 ### pynumstore
