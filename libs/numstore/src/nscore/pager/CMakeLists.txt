@@ -28,4 +28,6 @@ list(
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_pgr_write_header.c
 )
 
+add_subdirectory(tests)
+
 set(LIBNUMSTORE_SRCS ${LIBNUMSTORE_SRCS} PARENT_SCOPE)

@@ -22,13 +22,7 @@
 
 #ifndef NDEBUG
 
-/**
- * This test is meant to mimic the crash and reopen bug
- * and should be made more reliable once root cause is found
- *
- * This is not a finalized test
- */
-TEST_DISABLED (0004_crash_after_churn_diverges)
+TEST (0004_crash_after_churn_diverges)
 {
   // Phaes 1 - churn - these operations are safe
   u8 churn[NSS_AT_LEN]                          = {0};
@@ -64,14 +58,21 @@ TEST_DISABLED (0004_crash_after_churn_diverges)
   struct ns_simulation *sim = ns_simul_open (params, &ctx->e);
   test_assert (sim != NULL);
 
-  for (int round = 0; round < 40; ++round) {
+  // Just repeat this 5 times - it usually hit, but it wasn't always
+  for (int round = 0; round < 5; ++round) {
     // Phase 1 - churn
     ns_simul_set_enabled (sim, churn);
     for (int i = 0; i < 25; ++i) {
       test_assert_int_equal (ns_simul_step (sim, &ctx->e), SUCCESS);
     }
 
-    // Phase 2 - crash - this should crash
+    // Crash again
+    //
+    // This failed -
+    //      CAUSE:
+    //          The recovery phase read logs then appended to the end of a torn
+    //          log record rather than start appending at the last known valid
+    //          log record
     ns_simul_set_enabled (sim, crash);
     test_assert_int_equal (ns_simul_step (sim, &ctx->e), SUCCESS);
   }

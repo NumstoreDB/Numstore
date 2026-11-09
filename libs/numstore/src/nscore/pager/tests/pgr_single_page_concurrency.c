@@ -19,24 +19,20 @@
 #include "nscore/page/ns_page_h.h"
 #include "nscore/pager/ns_pager.h"
 
-#include <stdatomic.h>
-
 #ifndef NDEBUG
 #  include "core/ns_testing.h"
 #endif
 
 #ifndef NDEBUG
 
-#  define NITERS   700
-#  define NTHREADS 10
-
 struct thread_ctx
 {
-  _Atomic int  *iter;
+  struct wal   *w;
   struct pager *p;
   struct txn   *tx;
   _Atomic int  *ready;
   _Atomic int  *go;
+  pgno          pg;
   bool          success;
   err_t         ret;
 };
@@ -58,22 +54,12 @@ simple_pager_ops (void *_ctx)
     spin_pause ();
   }
 
-  for (int i = 0; i < NITERS; ++i) {
-    // Create a new page
-    pgr_new (&a, p, ctx->tx, PG_DATA_LIST, &e);
-
-    int iter = atomic_fetch_add (ctx->iter, 1);
-    if (iter % 50 == 0) {
-      i_log_info ("Thread iter: %d / %d\n", iter, NITERS * NTHREADS);
-    }
-
-    pgno apg = page_h_pgno (&a);
+  // High contention code
+  {
+    pgr_get_writable (&a, ctx->tx, PG_DATA_LIST, ctx->pg, p, &e);
     dl_memset (page_h_w (&a), abytes, DL_DATA_SIZE);
-    pgr_release (p, &a, PG_DATA_LIST, &e);
-
-    // Get the same page and check it's the same
-    pgr_get (&a, PG_DATA_LIST, apg, p, &e);
-    ctx->success = memcmp (dl_get_data (page_h_ro (&a)), abytes, DL_DATA_SIZE) == 0;
+    bool avalid  = memcmp (dl_get_data (page_h_ro (&a)), abytes, DL_DATA_SIZE) == 0;
+    ctx->success = avalid;
     pgr_release (p, &a, PG_DATA_LIST, &e);
   }
 
@@ -82,23 +68,28 @@ simple_pager_ops (void *_ctx)
   return NULL;
 }
 
-TEST (0004_pgr_new_get)
+TEST (pgr_single_page_concurrency)
 {
   struct pgr_fixture pf;
   pgr_fixture_create (&pf, &ctx->e);
 
   pgr_begin_txn (&pf.tx, pf.p, &ctx->e);
 
-  struct thread_ctx tctx[10];
+  // Get the page to modify
+  page_h a = page_h_create ();
+  pgr_new (&a, pf.p, &pf.tx, PG_DATA_LIST, &ctx->e);
+  pgno pg = page_h_pgno (&a);
+  dl_make_valid (page_h_w (&a));
+  pgr_release (pf.p, &a, PG_DATA_LIST, &ctx->e);
+
+  struct thread_ctx tctx[50];
   i_thread          threads[arrlen (tctx)];
-  _Atomic int       iter  = 0;
   _Atomic int       ready = arrlen (tctx);
   _Atomic int       go    = 0;
-
   for (int i = 0; i < arrlen (tctx); ++i) {
     tctx[i] = (struct thread_ctx){
-        .iter    = &iter,
         .p       = pf.p,
+        .pg      = pg,
         .tx      = &pf.tx,
         .ready   = &ready,
         .go      = &go,

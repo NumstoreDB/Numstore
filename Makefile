@@ -245,7 +245,22 @@ sdist:
 #############################################
 ### Housekeeping
 .PHONY: format
-EXCLUDE := -not -path '*build*'
+EXCLUDE :=
+EXCLUDE += -not -path '*/.git/*'
+EXCLUDE += -not -path '*/.cache/*'
+EXCLUDE += -not -path '*/.venv/*'
+EXCLUDE += -not -path '*/venv/*'
+EXCLUDE += -not -path '*/build/*'
+EXCLUDE += -not -path '*/dist/*'
+EXCLUDE += -not -path '*/node_modules/*'
+EXCLUDE += -not -path '*/__pycache__/*'
+EXCLUDE += -not -path '*/.mypy_cache/*'
+EXCLUDE += -not -path '*/.pytest_cache/*'
+EXCLUDE += -not -path '*/.ruff_cache/*'
+EXCLUDE += -not -path '*/.tox/*'
+EXCLUDE += -not -path '*/*.egg-info/*'
+EXCLUDE += -not -path '*/.idea/*'
+EXCLUDE += -not -path '*/.vscode/*'
 
 C_SRCS     := $(shell find . -name '*.c' $(EXCLUDE))
 H_SRCS     := $(shell find . -name '*.h' $(EXCLUDE))

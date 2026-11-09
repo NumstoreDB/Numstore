@@ -125,7 +125,7 @@ simple_pager_ops (void *_ctx)
 #  undef VTYPE
 #  undef SUFFIX
 
-TEST (0001_pager_is_thread_safe_in_a_single_txn)
+TEST (pgr_single_txn_concurrency)
 {
   struct pgr_fixture pf;
   pgr_fixture_create (&pf, &ctx->e);
