@@ -64,7 +64,7 @@ snprintf_len (const int n)
 #endif
 
 HEADER_FUNC u64
-memcpy_inc (void *dest, void *src, u64 len)
+memcpy_inc (void *dest, const void *src, u64 len)
 {
   memcpy (dest, src, len);
   return len;

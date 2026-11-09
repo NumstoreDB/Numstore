@@ -18,55 +18,12 @@
 #include "core/ns_error.h"
 #include "core/ns_gr_lock.h"
 #include "core/ns_htable.h"
+#include "core/ns_latch.h"
 #include "core/ns_utils.h"
+#include "nscore/lock_table/ns_lt_lock.h"
 #include "nscore/txn_table/ns_txn_table.h"
 
 #include <string.h>
-
-/**
- * Serialize the data within a lock into a
- * single u32
- */
-static u32
-lt_lock_key (const struct lt_lock lock)
-{
-  // The containing buffer
-  char     hcode[sizeof (u8)];
-  u32      hcodelen = 0;
-  const u8 _type    = lock.type;
-
-  memcpy (&hcode[hcodelen], &_type, sizeof (_type));
-  hcodelen += sizeof (_type);
-
-  switch (lock.type) {
-    case LOCK_DB: {
-      break;
-    }
-  }
-
-  const struct string lock_type_hcode = {
-      .data = hcode,
-      .len  = hcodelen,
-  };
-
-  return fnv1a_hash (lock_type_hcode);
-}
-
-/**
- * Get the parent lock (heirarchial locking)
- */
-static bool
-get_parent (struct lt_lock *parent, const struct lt_lock lock)
-{
-  (void)parent; // Unused for now
-  switch (lock.type) {
-    case LOCK_DB: {
-      return false;
-    }
-  }
-
-  UNREACHABLE (); // LCOV_EXCL_LINE
-}
 
 /**
  * Holder of a lock
@@ -208,6 +165,21 @@ get_or_create_frame_unsafe (struct lockt *t, struct lt_lock lock, error *e)
   return frame;
 }
 
+static struct lockt_frame *
+get_frame_unsafe_expect (struct lockt *t, struct lt_lock lock)
+{
+  struct lockt_frame lookup_key;
+  lockt_frame_init_key (&lookup_key, lock);
+
+  struct hnode **node = htable_lookup (t->table, &lookup_key.node, lockt_frame_eq);
+  ASSERT (node != NULL);
+  struct lockt_frame *frame = container_of (*node, struct lockt_frame, node);
+
+  frame_ref (frame);
+
+  return frame;
+}
+
 static err_t
 lockt_lock_once (
     struct lockt        *t,
@@ -218,6 +190,34 @@ lockt_lock_once (
 )
 {
   latch_lock (&t->l);
+
+#ifdef EXPERIMENTAL_HIERARCHIAL_TXNS
+  if (tx) {
+    struct txn_lock *l = txn_get_lock_unsafe (tx, lock);
+
+    // lock already exists in transaction
+    if (l) {
+      // Mode already matches
+      if (l->mode == mode) {
+        latch_unlock (&t->l);
+        return SUCCESS;
+      }
+
+      // Need to upgrade lock
+      struct lockt_frame *frame = get_frame_unsafe_expect (t, lock);
+      gr_unlock (&frame->lock, l->mode);
+      if (gr_lock (&frame->lock, mode, e)) {
+        panic ("TODO");
+        latch_unlock (&t->l);
+        return error_trace (e);
+      }
+
+      l->mode = mode;
+      latch_unlock (&t->l);
+      return error_trace (e);
+    }
+  }
+#endif
 
   struct lockt_frame *frame = get_or_create_frame_unsafe (t, lock, e);
   if (frame == NULL) {
@@ -360,6 +360,14 @@ i_log_lockt_entry (struct hnode *node, void *ctx)
       i_log (*log_level, "LOCK_DB\n");
       break;
     }
+    case LOCK_VHMAP: {
+      i_log (*log_level, "LOCK_VHMAP\n");
+      break;
+    }
+    case LOCK_VAR_PAGE: {
+      i_log (*log_level, "LOCK_VAR_PAGE: %" PRpgno "\n", frame->key.data.pg);
+      break;
+    }
   }
 }
 
@@ -371,21 +379,6 @@ i_log_lockt (int log_level, struct lockt *t)
   latch_lock (&t->l);
   htable_foreach (t->table, i_log_lockt_entry, &log_level);
   latch_unlock (&t->l);
-}
-
-bool
-lt_lock_equal (const struct lt_lock left, const struct lt_lock right)
-{
-  if (left.type != right.type) {
-    return false;
-  }
-
-  switch (left.type) {
-    case LOCK_DB: {
-      return true;
-    }
-  }
-  UNREACHABLE (); // LCOV_EXCL_LINE
 }
 
 #ifndef NDEBUG

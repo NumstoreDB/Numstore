@@ -13,6 +13,7 @@
 /// limitations under the License.
 
 #include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
 #include "core/ns_testing.h"
 #include "nscore/page/ns_page_fixture.h"
 #include "nscore/pager/ns_pager.h"
@@ -31,12 +32,15 @@ pgr_reserve_and_ctrl_lock (struct pager *p, error *e)
 {
   DBG_ASSERT (pager, p);
 
-  struct page_frame *mp             = NULL;
-  u32                clock          = pgr_spin_clock (p);
-  bool               ready_to_evict = false; // First round - don't evict any pages
+  struct page_frame *mp    = NULL;
+  u32                clock = pgr_spin_clock (p);
+
+  // Only start evicting after we've
+  // searched the entire page table for a spot
+  u32                iters = 0;
 
   // Loop forever - this is highly concurrent
-  for (;; clock = pgr_spin_clock (p)) {
+  for (;; clock = pgr_spin_clock (p), iters++) {
     mp = &p->pages[clock];
 
     if (!latch_trylock (&mp->ctrl)) {
@@ -63,7 +67,7 @@ pgr_reserve_and_ctrl_lock (struct pager *p, error *e)
       continue;
     }
 
-    if (ready_to_evict) {
+    if (iters >= MEMORY_PAGE_LEN) {
       // Found a spot - but it's not being used - safe to evict it
       if (pgr_evict_unsafe (p, mp, e) < 0) {
         return error_trace (e);
@@ -73,7 +77,6 @@ pgr_reserve_and_ctrl_lock (struct pager *p, error *e)
     } else {
       // The first round - don't evict anything
       latch_unlock (&mp->ctrl);
-      ready_to_evict = true;
     }
   }
 

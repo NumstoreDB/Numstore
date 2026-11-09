@@ -13,6 +13,10 @@ endif()
 add_library(numstore STATIC ${LIBNUMSTORE_SRCS})
 add_library(numstore::numstore ALIAS numstore)
 
+if(EXPERIMENTAL_HIERARCHIAL_TXNS)
+    target_compile_definitions(numstore PRIVATE EXPERIMENTAL_HIERARCHIAL_TXNS)
+endif()
+
 target_include_directories(
     numstore
     PUBLIC

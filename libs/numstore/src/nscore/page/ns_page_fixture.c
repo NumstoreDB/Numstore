@@ -122,6 +122,109 @@ pgr_fixture_teardown_with (struct pgr_fixture *f, error *e)
   return e->cause_code;
 }
 
+spgno
+pgr_fixture_new_page (struct pgr_fixture *f, error *e)
+{
+  pgno   ret;
+  page_h h = page_h_create ();
+
+  if (pgr_new (&h, f->p, &f->tx, PG_DATA_LIST, e) < 0) {
+    return error_trace (e);
+  }
+
+  dl_make_valid (page_h_w (&h));
+  ret = page_h_pgno (&h);
+
+  if (pgr_release (f->p, &h, PG_DATA_LIST, e) < 0) {
+    return error_trace (e);
+  }
+
+  return (spgno)ret;
+}
+
+spgno
+pgr_fixture_new_page_txn (struct pgr_fixture *f, error *e)
+{
+  page_h h = page_h_create ();
+
+  pgr_begin_txn (&f->tx, f->p, e);
+  spgno ret = pgr_fixture_new_page (f, e);
+  if (ret < 0) {
+    return pgr_rollback (f->p, &f->tx, 0, e);
+  }
+
+  if (pgr_commit (f->p, &f->tx, e) < 0) {
+    return error_trace (e);
+  }
+
+  return ret;
+}
+
+pgno
+pgr_fixture_new_page_txn_evict (struct pgr_fixture *f, error *e)
+{
+  spgno ret = pgr_fixture_new_page_txn (f, e);
+  if (ret < 0) {
+    return ret;
+  }
+  if (pgr_evict_all_pages (f->p, e) < 0) {
+    return error_trace (e);
+  }
+  return ret;
+}
+
+err_t
+pgr_load_page (struct pgr_fixture *f, pgno pg, error *e)
+{
+  pgno   ret;
+  page_h h = page_h_create ();
+
+  if (pgr_get (&h, PG_DATA_LIST, pg, f->p, e) < 0) {
+    return error_trace (e);
+  }
+
+  return pgr_release (f->p, &h, PG_DATA_LIST, e);
+}
+
+err_t
+pgr_fixture_fill_buffer_pool (struct pgr_fixture *f, u32 npages, error *e)
+{
+  pgno *pgs = f->mem.table->malloc (f->mem.self, npages, sizeof *pgs, e);
+  if (pgs == NULL) {
+    return error_trace (e);
+  }
+
+  if (pgr_begin_txn (&f->tx, f->p, e) < 0) {
+    return error_trace (e);
+  }
+
+  // Make sure there are at least this many pages
+  for (int i = 0; i < MEMORY_PAGE_LEN; ++i) {
+    spgno pg = pgr_fixture_new_page (f, e);
+    if (pg < 0) {
+      goto rollback;
+    }
+    pgs[i] = (pgno)pg;
+  }
+
+  // Evict all pages, pgr_get only reserves 1 spot in the
+  // buffer pool - if that changes, this is wrong
+  if (pgr_evict_all_pages (f->p, e) < 0) {
+    goto rollback;
+  }
+
+  for (int i = 0; i < MEMORY_PAGE_LEN; ++i) {
+    if (pgr_load_page (f, pgs[i], e) < 0) {
+      goto rollback;
+    }
+  }
+
+  return pgr_commit (f->p, &f->tx, e);
+
+rollback:
+  return pgr_rollback (f->p, &f->tx, 0, e);
+}
+
 struct tree_result
 {
   spgno  root;

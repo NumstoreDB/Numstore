@@ -12,6 +12,8 @@ string(
 project(numstore VERSION ${NUMSTORE_CMAKE_VERSION} LANGUAGES C)
 
 include(GNUInstallDirs)
+include(cmake/FeatureFlags.cmake)
+include(cmake/Rust.cmake)
 
 # Rust always links the release CRT (/defaultlib:msvcrt), even in debug builds.
 # A Debug C library built with /MDd references the debug CRT (_CrtDbgReport,
@@ -64,7 +66,6 @@ endif()
 ### Rust setup
 ### Not part of a wheel build: the extension is C only, and bindgen needs
 ### libclang, which the wheel build containers lack.
-include(cmake/Rust.cmake)
 corrosion_set_env_vars(numstore_rs NUMSTORE_LIB_DIR=$<TARGET_FILE_DIR:numstore>)
 add_dependencies(_cargo-build_numstore_rs numstore)
 

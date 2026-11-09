@@ -148,16 +148,6 @@ pgr_get_writable (
 #  include "core/ns_testing.h"
 #  include "nscore/page/ns_page_data_list.h"
 
-// TODO: on a cache miss pgr_get_writable inserts the read frame into
-// p->pgno_to_value (pin = 1, PW_PRESENT) *before* fpgr_read. When the read
-// (or page_validate_for_db) fails it only drops the ctrl latches, so the
-// page table keeps a pinned frame full of garbage for [pg]:
-//
-// - the next get of [pg] hits HTAR_SUCCESS and hands out that garbage
-// - pgr_close -> pgr_evict_all_pages asserts mp->pin == 0 on it
-//
-// pgr_get does it in the right order (read, validate, then insert). Fix: do
-// the same here, or remove the entry and clear the frame on failure.
 TEST_DISABLED (pgr_get_writable_fail_os)
 {
   struct pgr_fixture f;

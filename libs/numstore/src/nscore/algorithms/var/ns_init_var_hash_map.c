@@ -16,6 +16,8 @@
 #include "core/ns_testing.h"
 #include "core/os/ns_os.h"
 #include "nscore/algorithms/var/ns_var_algorithms.h"
+#include "nscore/lock_table/ns_lock_table.h"
+#include "nscore/lock_table/ns_lt_lock.h"
 #include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_data_list.h"
 #include "nscore/page/ns_page_fixture.h"
@@ -39,6 +41,13 @@ ns_init_var_hash_map (struct pager *p, error *e)
   if (pgr_begin_txn (&tx, p, e) < 0) {
     return error_trace (e);
   }
+
+  // Lock the database
+#ifdef EXPERIMENTAL_HIERARCHIAL_TXNS
+  if (lockt_lock (p->lt, lock_db (), LM_X, &tx, e) < 0) {
+    goto failed;
+  }
+#endif
 
   // Create a new variable hash page
   if (pgr_new (&hp, p, &tx, PG_VAR_HASH_PAGE, e) < 0) {

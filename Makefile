@@ -14,6 +14,7 @@ COMMIT := $(shell git rev-parse HEAD 2>/dev/null || echo unknown)
 DEBUG_BIN := build/debug/bin
 
 ############ Debug
+
 .PHONY: debug
 debug: build/debug/CMakeCache.txt
 	cmake --build build/debug -j12
@@ -22,6 +23,17 @@ build/debug/CMakeCache.txt:
 	cmake -S . -B build/debug \
 		-DCMAKE_BUILD_TYPE=Debug \
 		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+############ Locking
+.PHONY: locking
+locking: build/locking/CMakeCache.txt 
+	cmake --build build/locking -j12
+
+build/locking/CMakeCache.txt:
+	cmake -S . -B build/locking \
+		-DCMAKE_BUILD_TYPE=Debug \
+		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+		-DEXPERIMENTAL_HIERARCHIAL_TXNS=ON
 
 ############ Testing
 .PHONY: test

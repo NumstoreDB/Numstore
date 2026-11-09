@@ -13,9 +13,15 @@
 /// limitations under the License.
 
 #include "core/ns_error.h"
+#include "core/ns_stdtypes.h"
 #include "core/ns_testing.h"
+#include "core/os/ns_os.h"
+#include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_fixture.h"
+#include "nscore/page/ns_page_h.h"
 #include "nscore/pager/ns_pager.h"
+
+#include <stdatomic.h>
 
 err_t
 pgr_get (page_h *dest, int flags, pgno pg, struct pager *p, error *e)
@@ -143,34 +149,13 @@ TEST (pgr_get_invalid_checksum)
   pgr_fixture_teardown (&pf, &ctx->e);
 }
 
-// Commit one data page and push it out of the buffer pool, so the next get
-// has to read it from disk.
-static pgno
-pgr_get_test_seed_page (struct pgr_fixture *f, struct test_ctx *ctx)
-{
-  page_h h = page_h_create ();
-  pgr_begin_txn (&f->tx, f->p, &ctx->e);
-  pgr_new (&h, f->p, &f->tx, PG_DATA_LIST, &ctx->e);
-  dl_make_valid (page_h_w (&h));
-  const pgno pg = page_h_pgno (&h);
-  pgr_release (f->p, &h, PG_DATA_LIST, &ctx->e);
-  pgr_commit (f->p, &f->tx, &ctx->e);
-  pgr_evict_all_pages (f->p, &ctx->e);
-  return pg;
-}
-
 TEST (pgr_get_fail_os)
 {
   struct pgr_fixture f;
-  test_err_t_check (
-      pgr_fixture_create_with (&f, ctx->faulty_os, ctx->mem, &ctx->e),
-      SUCCESS,
-      &ctx->e
-  );
-  const pgno pg = pgr_get_test_seed_page (&f, ctx);
-  test_assert_int_equal (ctx->e.cause_code, SUCCESS);
+  pgr_fixture_create_with (&f, ctx->faulty_os, ctx->mem, &ctx->e);
+  pgno   pg = pgr_fixture_new_page_txn_evict (&f, &ctx->e);
 
-  page_h h = page_h_create ();
+  page_h h  = page_h_create ();
   err_t  ret;
   int    fail_after = 0;
 
@@ -179,11 +164,13 @@ TEST (pgr_get_fail_os)
     {
       error_reset (&ctx->e);
 
+      // Get a page
       faulty_os_fail_after (ctx->faulty_os, fail_after);
       ret = pgr_get (&h, PG_DATA_LIST, pg, f.p, &ctx->e);
       faulty_os_reset (ctx->faulty_os);
 
       if (ret != SUCCESS) {
+        // Page should remain as NONE
         test_assert_int_equal (h.mode, PHM_NONE);
       }
 
@@ -194,14 +181,36 @@ TEST (pgr_get_fail_os)
 
   // The page read back is the page that was written
   test_assert_type_equal (page_h_pgno (&h), pg, pgno, PRpgno);
-  test_assert_type_equal (
-      page_get_checksum (page_h_ro (&h)),
-      page_compute_checksum (page_h_ro (&h)),
-      u32,
-      PRIu32
-  );
-  test_err_t_check (pgr_release (f.p, &h, PG_DATA_LIST, &ctx->e), SUCCESS, &ctx->e);
 
-  test_err_t_check (pgr_fixture_teardown_with (&f, &ctx->e), SUCCESS, &ctx->e);
+  u32 crc        = page_get_checksum (page_h_ro (&h));
+  u32 actual_crc = page_compute_checksum (page_h_ro (&h));
+
+  test_assert_type_equal (crc, actual_crc, u32, PRIu32);
+  pgr_release (f.p, &h, PG_DATA_LIST, &ctx->e);
+
+  pgr_fixture_teardown_with (&f, &ctx->e);
+}
+
+TEST (pgr_get_full_buffer_fail_os)
+{
+  struct pgr_fixture f;
+  pgr_fixture_create_with (&f, ctx->faulty_os, ctx->mem, &ctx->e);
+
+  // Create our interested page - this is what we'll get later
+  pgno pg = pgr_fixture_new_page_txn (&f, &ctx->e);
+
+  pgr_fixture_fill_buffer_pool (&f, MEMORY_PAGE_LEN, &ctx->e);
+
+  // This next one should cause an eviction because
+  // the buffer pool is full - meaning reserve will fail
+  faulty_os_fail_after (ctx->faulty_os, 0);
+  page_h h   = page_h_create ();
+  err_t  ret = pgr_get (&h, PG_DATA_LIST, pg, f.p, &ctx->e);
+
+  test_assert (ret != SUCCESS);
+  test_assert (h.mode == PHM_NONE);
+  error_reset (&ctx->e);
+
+  pgr_fixture_teardown_with (&f, &ctx->e);
 }
 #endif

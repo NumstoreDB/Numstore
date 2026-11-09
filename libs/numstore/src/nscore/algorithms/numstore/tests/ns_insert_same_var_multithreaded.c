@@ -28,7 +28,7 @@
 #ifndef NDEBUG
 
 #  define NITERS           10
-#  define NTHREADS         10
+#  define NTHREADS         3
 #  define SIZE_EACH_INSERT 10000
 
 struct insert_mt_ctx

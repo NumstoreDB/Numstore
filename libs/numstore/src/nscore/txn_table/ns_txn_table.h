@@ -78,98 +78,33 @@ DEFINE_DBG_ASSERT (struct txn, ns_txn, t, {
   }
 })
 
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Lifecycle Initialization
- *----------------------------------------------------------------------------*/
-
-/**
- * @fn void txn_init(struct txn *dest, txid tid, struct txn_data data, struct
- * i_mem mem)
- * @brief Allocates and maps tracking fields to complete initialization loops.
- */
 void txn_init (struct txn *dest, txid tid, struct txn_data data, struct i_mem mem);
-
-/**
- * @fn void txn_key_init(struct txn *dest, txid tid)
- * @brief Allocates tracking context maps matching explicit keys alone.
- */
 void txn_key_init (struct txn *dest, txid tid);
-
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Atomic Updates
- *----------------------------------------------------------------------------*/
-
-/**
- * @fn void txn_update_data(struct txn *t, struct txn_data data)
- * @brief Swaps the complete underlying internal telemetry block in-place.
- */
 void txn_update_data (struct txn *t, struct txn_data data);
-
-/**
- * @fn void txn_update(struct txn *t, enum tx_state state, lsn last, lsn
- * undo_next)
- * @brief Comprehensive mutation field overlay editing active properties.
- */
 void txn_update (struct txn *t, enum tx_state state, lsn last, lsn undo_next);
-
-/**
- * @fn void txn_update_state(struct txn *t, enum tx_state new_state)
- * @brief Single field updates altering the tracked ARIES lifecycle path.
- */
 void txn_update_state (struct txn *t, enum tx_state new_state);
-
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Equality Evaluation
- *----------------------------------------------------------------------------*/
-
-/**
- * @fn bool txn_data_equal_unsafe(const struct txn_data *left, const struct
- * txn_data *right)
- * @brief Direct memory validation check evaluating differences without
- * acquiring latches.
- */
 bool txn_data_equal_unsafe (const struct txn_data *left, const struct txn_data *right);
 
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Lock Management
- *----------------------------------------------------------------------------*/
-
-/**
- * @typedef lock_func
- * @brief Iteration callback tracking items allocated out of internal
- * transaction tables.
- */
 typedef void (*lock_func) (struct lt_lock lock, enum lock_mode mode, void *ctx);
-
-/**
- * @fn err_t txn_newlock(struct txn *t, struct lt_lock lock, enum lock_mode
- * mode, error *e)
- * @brief Attaches a newly tracked lock resource allocation context container.
- */
 err_t txn_newlock (struct txn *t, struct lt_lock lock, enum lock_mode mode, error *e);
-
-/**
- * @fn bool txn_haslock(struct txn *t, struct lt_lock lock)
- * @brief Validation lookup checking whether target identifiers are actively
- * retained.
- */
-bool txn_haslock (struct txn *t, struct lt_lock lock);
-
-/**
- * @fn void txn_close(struct txn *t)
- * @brief Deallocates memory spaces and releases all tracking properties.
- */
+struct txn_lock *txn_get_lock_unsafe (const struct txn *t, const struct lt_lock lock);
 void txn_close (struct txn *t);
-
-/**
- * @fn void txn_foreach_lock(struct txn *t, lock_func func, void *ctx)
- * @brief Loops over the complete active list of managed resource descriptors.
- */
 void txn_foreach_lock (struct txn *t, lock_func func, void *ctx);
 
-/*-----------------------------------------------------------------------------
- * SUBSECTION: Utilities
- *----------------------------------------------------------------------------*/
+HEADER_FUNC bool
+txn_haslock_unsafe (const struct txn *t, const struct lt_lock lock)
+{
+  return txn_get_lock_unsafe (t, lock) != NULL;
+}
+
+HEADER_FUNC bool
+txn_haslock (struct txn *t, const struct lt_lock lock)
+{
+  latch_lock (&t->l);
+  bool ret = txn_get_lock_unsafe (t, lock) != NULL;
+  latch_unlock (&t->l);
+  return ret;
+}
 
 /******************************************************************************
  * SECTION: Active Transaction Table (ATT) Type Definition

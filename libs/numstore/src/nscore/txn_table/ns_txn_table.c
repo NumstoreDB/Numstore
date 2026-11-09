@@ -16,6 +16,7 @@
 
 #include "core/ns_csx_assert.h"
 #include "core/ns_dbl_buffer.h"
+#include "core/ns_latch.h"
 #include "core/ns_testing.h"
 #include "core/ns_utils.h"
 #include "core/os/ns_malloc.h"
@@ -90,34 +91,11 @@ txn_data_equal_unsafe (const struct txn_data *left, const struct txn_data *right
   return equal;
 }
 
-static bool
-txn_haslock_unsafe (const struct txn *t, const struct lt_lock lock)
-{
-  bool                   ret  = false;
-
-  const struct txn_lock *curr = t->locks;
-  while (curr != NULL) {
-    if (lt_lock_equal (curr->lock, lock)) {
-      ret = true;
-      goto theend;
-    }
-    curr = curr->next;
-  }
-
-theend:
-  return ret;
-}
-
 err_t
 txn_newlock (struct txn *t, const struct lt_lock lock, const enum lock_mode mode, error *e)
 {
   latch_lock (&t->l);
   DBG_ASSERT (ns_txn, t);
-
-  if (txn_haslock_unsafe (t, lock)) {
-    latch_unlock (&t->l);
-    return SUCCESS;
-  }
 
   struct txn_lock *next = slab_alloc_alloc (&t->lock_alloc, e);
   if (next == NULL) {
@@ -135,25 +113,24 @@ txn_newlock (struct txn *t, const struct lt_lock lock, const enum lock_mode mode
   return SUCCESS;
 }
 
-bool
-txn_haslock (struct txn *t, const struct lt_lock lock)
+struct txn_lock *
+txn_get_lock_unsafe (const struct txn *t, const struct lt_lock lock)
 {
-  latch_lock (&t->l);
   DBG_ASSERT (ns_txn, t);
 
-  bool                   ret  = false;
+  struct txn_lock *ret  = NULL;
 
-  const struct txn_lock *curr = t->locks;
+  struct txn_lock *curr = t->locks;
+
   while (curr != NULL) {
     if (lt_lock_equal (curr->lock, lock)) {
-      ret = true;
+      ret = curr;
       goto theend;
     }
     curr = curr->next;
   }
 
 theend:
-  latch_unlock (&t->l);
   return ret;
 }
 

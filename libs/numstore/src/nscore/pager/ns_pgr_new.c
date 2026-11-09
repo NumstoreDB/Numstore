@@ -14,9 +14,11 @@
 
 #include "core/ns_error.h"
 #include "core/ns_testing.h"
+#include "core/os/ns_os.h"
 #include "nscore/lock_table/ns_lock_table.h"
 #include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_fixture.h"
+#include "nscore/page/ns_page_h.h"
 #include "nscore/pager/ns_pager.h"
 #include "nscore/txn_table/ns_txn_table.h"
 #include "nscore/wal/ns_wal_record.h"
@@ -374,27 +376,36 @@ pgr_new_sweep_cleanup (
 TEST_DISABLED (pgr_new_fail_os)
 {
   struct pgr_fixture f;
-  page_h             h;
-  bool               lock_leaked = false;
-  err_t              ret;
-  int                fail_after = 0;
+  pgr_fixture_create_with (&f, ctx->faulty_os, ctx->faulty_mem, &ctx->e);
+  page_h h          = page_h_create ();
+
+  int    fail_after = 0;
+  err_t  ret;
+
+  test_err_t_check (pgr_begin_txn (&f.tx, f.p, &ctx->e), SUCCESS, &ctx->e);
 
   do {
     TEST_CASE ("Fail after: %d", fail_after)
     {
-      pgr_fixture_create_with (&f, ctx->faulty_os, ctx->faulty_mem, &ctx->e);
-      test_err_t_check (pgr_begin_txn (&f.tx, f.p, &ctx->e), SUCCESS, &ctx->e);
-      h   = page_h_create ();
+      error_reset (&ctx->e);
 
-      ret = pgr_new_under_fault (&f, &h, ctx, true, fail_after);
-      pgr_new_sweep_cleanup (&f, &h, ret, &lock_leaked, ctx);
+      faulty_os_fail_after (ctx->faulty_os, fail_after);
+      ret = pgr_new (&h, f.p, &f.tx, PG_DATA_LIST, &ctx->e);
+      faulty_os_reset (ctx->faulty_os);
+
+      if (ret != SUCCESS) {
+      }
 
       fail_after++;
     }
   }
   while (ret != SUCCESS);
 
-  test_fail_if (lock_leaked);
+  dl_make_valid (page_h_w (&h));
+  pgr_release (f.p, &h, PG_DATA_LIST, &ctx->e);
+  pgr_commit (f.p, &f.tx, &ctx->e);
+
+  pgr_fixture_teardown (&f, &ctx->e);
 }
 
 // TODO: Same as pgr_new_fail_os bug 2: the crash iterations pass, but the

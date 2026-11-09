@@ -58,6 +58,13 @@ err_t pgr_fixture_create_with (
 );
 err_t pgr_fixture_teardown_with (struct pgr_fixture *f, error *e);
 
+// Utilities
+spgno pgr_fixture_new_page (struct pgr_fixture *f, error *e);
+spgno pgr_fixture_new_page_txn (struct pgr_fixture *f, error *e);
+pgno pgr_fixture_new_page_txn_evict (struct pgr_fixture *f, error *e);
+err_t pgr_load_page (struct pgr_fixture *f, pgno pg, error *e);
+err_t pgr_fixture_fill_buffer_pool (struct pgr_fixture *f, u32 npages, error *e);
+
 /******************************************************************************
  * SECTION: Tree fixture 2
  * ----------------------------------------------------------------------------

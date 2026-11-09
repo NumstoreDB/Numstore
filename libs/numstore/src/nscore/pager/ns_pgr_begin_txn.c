@@ -42,15 +42,13 @@ pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
       p->mem
   );
 
-  // Lock the database before doing any changes to the log or page table
+#ifndef EXPERIMENTAL_HIERARCHIAL_TXNS
   if (lockt_lock (p->lt, lock_db (), LM_X, tx, e) < 0) {
     // Failing here is fine - just couldn't acquire a lock
     return error_trace (e);
   }
+#endif
 
-  // TODO: wal_append_begin_log crashes instead of failing and returns an
-  // unsigned lsn, so this branch is dead. Decide whether appends should
-  // return errors before removing it.
   l = (slsn)wal_append_begin_log (p->ww, tid);
 
   if (l < 0) {
@@ -80,9 +78,8 @@ TEST (pgr_begin_txn_fail_no_wal)
   struct pgr_fixture f;
   pgr_fixture_create_with (&f, ctx->faulty_os, ctx->faulty_mem, &ctx->e);
 
-  struct txn tx;
-  int        fail_after = 0;
-  err_t      ret;
+  int   fail_after = 0;
+  err_t ret;
 
   do {
     TEST_CASE ("Fail after: %d", fail_after)
@@ -94,7 +91,7 @@ TEST (pgr_begin_txn_fail_no_wal)
 
       // Do operation under error
       faulty_os_fail_after (ctx->faulty_os, fail_after);
-      ret = pgr_begin_txn (&tx, f.p, &ctx->e);
+      ret = pgr_begin_txn (&f.tx, f.p, &ctx->e);
       faulty_os_reset (ctx->faulty_os);
 
       fail_after++;
@@ -103,7 +100,7 @@ TEST (pgr_begin_txn_fail_no_wal)
   while (ret != SUCCESS);
 
   // Done - commit and clean up
-  pgr_commit (f.p, &tx, &ctx->e);
+  pgr_commit (f.p, &f.tx, &ctx->e);
   pgr_fixture_teardown_with (&f, &ctx->e);
 }
 

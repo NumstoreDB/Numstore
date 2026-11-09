@@ -11,7 +11,8 @@ Features:
   all, even if the process crashes partway through. Transactions are strictly
   serializable - one is open at a time - and crash recovery uses ARIES over a
   unique rope variant of the B+Tree to index into arrays. Concurrent readers and
-  writers are in development the infrastructure (lock tables and hierarchial locking, thread safe page buffer pool are all complete) is there, I just don't have the time to _test it_ yet. Something I hope to change. For now, there's a single global database lock.
+  writers are in development the infrastructure (guarded under the 
+  `EXPERIMENTAL_HIERARCHIAL_TXNS` feature flag).
 - **Arrays.** Numstore stores images, sensor streams, tick data and any fixed
   layout of numbers you can describe as a type.
 - **No dependencies.** Written in C11 with first class Python bindings that

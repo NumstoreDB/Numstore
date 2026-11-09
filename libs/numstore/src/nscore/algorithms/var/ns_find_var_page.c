@@ -18,6 +18,8 @@
 #include "core/ns_stdtypes.h"
 #include "core/ns_string.h"
 #include "nscore/algorithms/var/ns_var_algorithms_internal.h"
+#include "nscore/lock_table/ns_lock_table.h"
+#include "nscore/lock_table/ns_lt_lock.h"
 #include "nscore/page/ns_page.h"
 #include "nscore/page/ns_page_fixture.h"
 #include "nscore/page/ns_page_h.h"
@@ -117,6 +119,14 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
   // Temporary allocator while scanning nodes
   ALLOC_INIT (temp);
 
+#ifdef EXPERIMENTAL_HIERARCHIAL_TXNS
+  // Lock the variable hash table
+  enum lock_mode mode = writable ? LM_X : LM_S;
+  if (lockt_lock (pms->p->lt, lock_vhmap (), mode, pms->tx, e) < 0) {
+    goto failed;
+  }
+#endif
+
   // The hash bin of this variable
   pms->hpos = vh_get_hash_pos (pms->vname);
 
@@ -160,6 +170,14 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
 
   // That hash chain exists
   else {
+
+#ifdef EXPERIMENTAL_HIERARCHIAL_TXNS
+    // Lock (variable)
+    if (lockt_lock (pms->p->lt, lock_var_page (head), mode, pms->tx, e) < 0) {
+      goto failed;
+    }
+#endif
+
     // Fetch start hash chain
     if (FAULT (
             pgr_get_maybe_writable (&cur, pms->tx, PG_VAR_PAGE, head, pms->p, writable, e) < 0,
@@ -253,6 +271,13 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
 
           // prev = cur
           prev = page_h_xfer_ownership (&cur);
+
+          // Lock (variable)
+#ifdef EXPERIMENTAL_HIERARCHIAL_TXNS
+          if (lockt_lock (pms->p->lt, lock_var_page (next), mode, pms->tx, e) < 0) {
+            goto failed;
+          }
+#endif
 
           // cur = cur->next
           if (pgr_get_maybe_writable (&cur, pms->tx, PG_VAR_PAGE, next, pms->p, writable, e) < 0) {

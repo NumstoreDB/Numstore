@@ -122,6 +122,7 @@ producer_thread (void *_args)
   return NULL;
 }
 
+// TODO - this test fails because pgr_new is not safe on error
 TEST (pgr_checkpoint)
 {
   TEST_CASE ("smoke test")

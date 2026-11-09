@@ -23,23 +23,11 @@
 #include "core/ns_slab_alloc.h"
 #include "core/os/ns_malloc.h"
 #include "core/os/ns_os.h"
+#include "nscore/lock_table/ns_lt_lock.h"
 
 #include <stdbool.h>
 
 struct txn;
-
-///////////////////// Lock data
-struct lt_lock
-{
-  enum lt_lock_type
-  {
-    LOCK_DB, // The whole database
-  } type;
-};
-
-// Builders
-#define lock_create(_type) ((struct lt_lock){.type = (_type)})
-#define lock_db()          lock_create (LOCK_DB)
 
 ///////////////////// Lock Table
 struct lockt
@@ -67,6 +55,5 @@ err_t lockt_lock (
 void lockt_unlock (struct lockt *t, struct lt_lock lock, enum lock_mode mode);
 void lockt_unlock_tx (struct lockt *t, struct txn *tx);
 void i_log_lockt (int log_level, struct lockt *t);
-bool lt_lock_equal (struct lt_lock left, struct lt_lock right);
 
 #endif // LOCK_TABLE_H
