@@ -341,10 +341,10 @@ TEST (union_t_snprintf)
       .un   = st,
   };
 
-  const char *expected = "union { foo u32, fo u8, baro u16, bazbi cf128 }";
-  char       *ret      = type_tostr (&ctx->alloc, &t, &ctx->e);
+  const char expected[] = "union { foo u32, fo u8, baro u16, bazbi cf128 }";
+  char      *ret        = type_tostr (&ctx->alloc, &t, &ctx->e);
   i_log_type (&t, &ctx->e);
-  test_assert_int_equal (strncmp (expected, ret, strnlen (expected, 4096)), 0);
+  test_assert_int_equal (strncmp (expected, ret, strnlen (expected, sizeof (expected))), 0);
   arena_alloc_free_all (&ctx->alloc);
 }
 #endif

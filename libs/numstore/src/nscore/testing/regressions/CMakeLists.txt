@@ -15,6 +15,7 @@ list(
     ${CMAKE_CURRENT_SOURCE_DIR}/0013_rollback_delete_past_buffer_pool.c
     ${CMAKE_CURRENT_SOURCE_DIR}/0014_type_size_overflow.c
     ${CMAKE_CURRENT_SOURCE_DIR}/0015_crash_with_txn_open_across_checkpoint.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/0016_crash_recovery_past_buffer_pool.c
 )
 
 set(LIBNUMSTORE_SRCS ${LIBNUMSTORE_SRCS} PARENT_SCOPE)

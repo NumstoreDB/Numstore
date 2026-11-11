@@ -174,11 +174,11 @@ TEST (sarray_t_snprintf)
       },
   };
 
-  const char *expected = "[10][11][12]u32";
+  const char expected[] = "[10][11][12]u32";
 
-  char       *ret      = type_tostr (&ctx->alloc, &s, &ctx->e);
+  char      *ret        = type_tostr (&ctx->alloc, &s, &ctx->e);
   i_log_type (&s, &ctx->e);
-  test_assert_int_equal (strncmp (expected, ret, strnlen (expected, 4096)), 0);
+  test_assert_int_equal (strncmp (expected, ret, strnlen (expected, sizeof (expected))), 0);
   arena_alloc_free_all (&ctx->alloc);
 }
 #endif

@@ -54,16 +54,31 @@ pgr_redo_log (struct wal_rec_hdr_read *log_rec, lsn read_lsn, void *_ctx, error 
           return error_trace (e);
         }
 
-        lsn page_lsn = page_get_page_lsn (page_h_ro (&ph));
+        err_t dirty    = SUCCESS;
+        lsn   page_lsn = page_get_page_lsn (page_h_ro (&ph));
         if (page_lsn < read_lsn) {
           wrh_redo (log_rec, &ph);
           r_ctx->nredone++;
           page_set_page_lsn (page_h_w (&ph), read_lsn);
+
+          // The redo dirtied this page. ctx->dpt (the table analysis
+          // built) only gets merged into p->dpt when restart is done, and
+          // pgr_flush looks at p->dpt - so without this a page evicted
+          // during restart is dropped without a write and the redo is lost
+          //
+          // ctx->dpt still decides what gets redone: a page that's flushed
+          // mid restart leaves p->dpt, but later records for it still
+          // need to be looked at
+          dirty = dpgt_add_if_ne (p->dpt, pg, read_lsn, e);
         } else {
           dpgt_update (ctx->dpt, pg, page_lsn + 1);
         }
 
         pgr_unfix (&ph, PG_PERMISSIVE);
+
+        if (dirty < 0) {
+          return error_trace (e);
+        }
       }
       break;
     }

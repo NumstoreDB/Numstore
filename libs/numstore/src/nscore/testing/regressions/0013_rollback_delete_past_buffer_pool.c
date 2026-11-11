@@ -83,16 +83,7 @@ TEST (0013_rollback_delete_past_buffer_pool)
   //      insert foo 1234 3000000, rollback, close, reopen
   // They take too long to be a unit test each, this one stands in for them
   //
-  // NOT CHECKED - restart (crash recovery) probably has a cousin of this:
-  //    pgr_restart_redo and pgr_restart_undo change pages the same way
-  //    (pgr_get_writable + pgr_unfix), and during restart the dirty pages
-  //    are tracked in ctx->dpt, which is only merged into p->dpt when
-  //    restart is done. pgr_flush looks at p->dpt. So a restart that touches
-  //    more pages than the buffer pool should evict redone / undone pages
-  //    without writing them
-  //
-  //    I couldn't get a clean reproduction: a transaction big enough to
-  //    need it runs into the ns_crash deadlock of regression 0015 first
+  // Restart (crash recovery) had the same problem - regression 0016
   //
   // The test is slow (about 9 seconds), nearly all of it in the setup.
   // Fewer, bigger variables don't make it faster

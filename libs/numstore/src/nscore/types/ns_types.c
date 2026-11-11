@@ -273,18 +273,18 @@ prim_t_snprintf (char *str, u32 size, const enum prim_t p)
 #ifndef NDEBUG
 TEST (prim_t_snprintf)
 {
-#  define CASE_PRIM(prim_type, exp)                                             \
-    TEST_CASE ("prim_t_snprintf(%s) == %s", #prim_type, exp)                    \
-    {                                                                           \
-      struct type t = {                                                         \
-          .type = T_PRIM,                                                       \
-          .p    = prim_type,                                                    \
-      };                                                                        \
-                                                                                \
-      const char *expect = exp;                                                 \
-      char       *ret    = type_tostr (&ctx->alloc, &t, &ctx->e);               \
-      i_log_type (&t, &ctx->e);                                                 \
-      test_assert_int_equal (strncmp (expect, ret, strnlen (expect, 4096)), 0); \
+#  define CASE_PRIM(prim_type, exp)                                                        \
+    TEST_CASE ("prim_t_snprintf(%s) == %s", #prim_type, exp)                               \
+    {                                                                                      \
+      struct type t = {                                                                    \
+          .type = T_PRIM,                                                                  \
+          .p    = prim_type,                                                               \
+      };                                                                                   \
+                                                                                           \
+      const char expect[] = exp;                                                           \
+      char      *ret      = type_tostr (&ctx->alloc, &t, &ctx->e);                         \
+      i_log_type (&t, &ctx->e);                                                            \
+      test_assert_int_equal (strncmp (expect, ret, strnlen (expect, sizeof (expect))), 0); \
     }
 
   CASE_PRIM (U8, "u8");
@@ -566,8 +566,8 @@ TEST (type_generate_string)
   TEST_CASE ("primitive")
   {
     struct type t            = {.type = T_PRIM, .p = CF128};
-    const char *expected     = "cf128";
-    u32         expected_len = (u32)strnlen (expected, 4096);
+    const char  expected[]   = "cf128";
+    u32         expected_len = (u32)strnlen (expected, sizeof (expected));
 
     char        buf[64];
     type_generate_string (buf, &t);
@@ -580,8 +580,8 @@ TEST (type_generate_string)
     struct type element      = {.type = T_PRIM, .p = I32};
     u32         dims[3]      = {5, 20, 100};
     struct type t            = {.type = T_SARRAY, .sa = {.rank = 3, .dims = dims, .t = &element}};
-    const char *expected     = "[5][20][100] i32";
-    u32         expected_len = (u32)strnlen (expected, 4096);
+    const char  expected[]   = "[5][20][100] i32";
+    u32         expected_len = (u32)strnlen (expected, sizeof (expected));
 
     char        buf[64];
     type_generate_string (buf, &t);
@@ -597,8 +597,8 @@ TEST (type_generate_string)
     struct type  *types[2]     = {&f1, &f2};
 
     struct type   t            = {.type = T_STRUCT, .st = {.len = 2, .keys = keys, .types = types}};
-    const char   *expected     = "struct { x f32, y f32 }";
-    u32           expected_len = (u32)strnlen (expected, 4096);
+    const char    expected[]   = "struct { x f32, y f32 }";
+    u32           expected_len = (u32)strnlen (expected, sizeof (expected));
 
     char          buf[64];
     type_generate_string (buf, &t);
@@ -617,10 +617,10 @@ TEST (type_generate_string)
         .type = T_UNION,
         .un   = {.len = 2, .keys = keys, .types = types} // Using .un overlay explicitly
     };
-    const char *expected     = "union { as_int i64, as_ptr u64 }";
-    u32         expected_len = (u32)strnlen (expected, 4096);
+    const char expected[]   = "union { as_int i64, as_ptr u64 }";
+    u32        expected_len = (u32)strnlen (expected, sizeof (expected));
 
-    char        buf[128];
+    char       buf[128];
     type_generate_string (buf, &t);
 
     test_assert_int_equal (memcmp (buf, expected, expected_len + 1), 0);
@@ -661,11 +661,11 @@ TEST (type_generate_string)
         .sa   = {.rank = 1, .dims = root_dims, .t = &parent_struct}
     };
 
-    const char *expected     = "[2] struct { payload union { raw u8, state i32 }, tags [5] cf32 }";
-    u32         expected_len = (u32)strnlen (expected, 4096);
+    const char expected[]   = "[2] struct { payload union { raw u8, state i32 }, tags [5] cf32 }";
+    u32        expected_len = (u32)strnlen (expected, sizeof (expected));
 
     // Verify type_get_string_size returns enough space for safe serialization
-    u32         calculated_size = type_get_string_size (&root_type);
+    u32        calculated_size = type_get_string_size (&root_type);
     test_assert_int_equal (calculated_size >= expected_len + 1, 1);
 
     char buf[256];

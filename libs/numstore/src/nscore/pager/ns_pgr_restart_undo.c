@@ -55,7 +55,16 @@ pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e)
 
           page_set_page_lsn (page_h_w (&ph), l);
           tx->data.last_lsn = l;
+
+          // Same as pgr_rollback and pgr_restart_redo: the undo dirtied
+          // this page, and pgr_flush only writes pages in p->dpt
+          err_t dirty       = dpgt_add_if_ne (p->dpt, log_rec->update.phys.pg, l, e);
+
           pgr_unfix (&ph, PG_PERMISSIVE);
+
+          if (dirty < 0) {
+            goto failed;
+          }
         }
 
         tx->data.undo_next_lsn = log_rec->update.prev;

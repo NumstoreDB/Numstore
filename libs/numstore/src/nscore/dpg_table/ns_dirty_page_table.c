@@ -139,6 +139,14 @@ merge_dpge (const pgno pg, const lsn rec_lsn, void *vctx)
     return;
   }
 
+  // dest can already have the page - restart adds the pages it redoes and
+  // undoes to the pager's table as it goes. src wins, and one entry per
+  // page: a second one would outlive the flush that removes the first
+  if (dpgt_exists (ctx->dest, pg)) {
+    dpgt_update (ctx->dest, pg, rec_lsn);
+    return;
+  }
+
   if (dpgt_add (ctx->dest, pg, rec_lsn, ctx->e) < 0) {
     return;
   }
