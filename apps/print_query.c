@@ -118,11 +118,11 @@ main (int argc, char **argv)
 
   printf ("%s", query_type_name (q.type));
 
-  struct string vname;
-  if (query_vname_of_interest (&vname, &q, &e) < 0) {
+  struct query get;
+  if (query_to_get (&get, &q, &e) < 0) {
     error_log_consume (&e);
   } else {
-    printf (" %.*s", (int)vname.len, vname.data);
+    printf (" %.*s", (int)get.get.name.len, get.get.name.data);
   }
   printf ("\n");
 
