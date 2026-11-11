@@ -1,6 +1,10 @@
 mod errors;
 mod numstore;
 
+// Nothing here calls nslang directly: the numstore C library does. Naming the
+// crate makes rustc link it.
+use nslang as _;
+
 use std::ptr::NonNull;
 
 use crate::{

@@ -1,5 +1,4 @@
 add_subdirectory(algorithms)
-add_subdirectory(compiler)
 add_subdirectory(disk_pager)
 add_subdirectory(dpg_table)
 add_subdirectory(lock_table)
@@ -8,7 +7,6 @@ add_subdirectory(page)
 add_subdirectory(pager)
 add_subdirectory(testing)
 add_subdirectory(txn_table)
-add_subdirectory(types)
 add_subdirectory(variables)
 add_subdirectory(wal)
 

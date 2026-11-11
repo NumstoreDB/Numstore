@@ -18,17 +18,14 @@
 #include "core/ns_arena_alloc.h"
 #include "core/ns_byte_accessor.h"
 #include "core/ns_error.h"
-#include "core/ns_linked_list.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_stride.h"
 #include "core/ns_string.h"
+#include "nscore/types/ns_types.h"
 
+#include <nslang.h>
 #include <stdbool.h>
-
-struct arena_alloc;
-struct builder;
-struct type;
 
 /******************************************************************************
  * SECTION: Type Accessor
@@ -73,19 +70,24 @@ struct type_accessor
   };
 };
 
-bool type_accessor_equal (struct type_accessor left, struct type_accessor right);
-struct type *ta_subtype (
-    struct type          *reftype,
-    struct type_accessor *ta,
-    struct arena_alloc   *alloc,
-    error                *e
-);
-struct byte_accessor *type_to_byte_accessor (
-    struct type_accessor *src,
-    struct type          *reftype,
-    struct arena_alloc   *dalloc,
-    error                *e
-);
+HEADER_FUNC bool
+type_accessor_equal (struct type_accessor left, struct type_accessor right)
+{
+  return nslang_type_accessor_equal (&left, &right);
+}
+
+HEADER_FUNC struct type *
+ta_subtype (struct type *reftype, struct type_accessor *ta, struct arena_alloc *alloc, error *e)
+{
+  struct nslang_error ne;
+  NSLANG_ARENA (a, alloc, e);
+
+  struct type *ret = nslang_ta_subtype (reftype, ta, &a, &ne);
+  if (ret == NULL) {
+    nslang_raise (e, &ne);
+  }
+  return ret;
+}
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Simple Stack Constructors
@@ -114,45 +116,5 @@ ta_range (struct user_stride *dim_accessors, u16 dlen, struct type_accessor *sub
       },
   };
 }
-
-////////////////////////////////////////////////////////////
-/// BUILDER
-
-struct rb_llnode
-{
-  struct user_stride stride;
-  struct llnode      link;
-};
-
-struct range_builder
-{
-  struct llnode  *head;
-  u32             len;
-  struct builder *b;
-};
-
-struct range_builder rb_create (struct builder *b);
-err_t rb_accept_stride (struct range_builder *rb, struct user_stride stride, error *e);
-err_t rb_build (struct range_ta *dest, struct range_builder *rb, error *e);
-
-struct type_accessor_builder
-{
-  struct type_accessor  ret;
-  struct type_accessor *head;
-  struct type_accessor *tail;
-  struct builder       *b;
-  struct range_builder  rb;
-  bool                  in_range;
-};
-
-struct type_accessor_builder tab_create (struct builder *b);
-err_t tab_accept_select (struct type_accessor_builder *builder, struct string key, error *e);
-err_t tab_accept_stride (
-    struct type_accessor_builder *builder,
-    struct user_stride            stride,
-    error                        *e
-);
-err_t tab_accept_take (struct type_accessor_builder *builder, error *e);
-err_t tab_build (struct type_accessor *dest, struct type_accessor_builder *builder, error *e);
 
 #endif

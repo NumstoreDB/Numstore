@@ -637,7 +637,11 @@ class TestQuery:
 
     @pytest.mark.parametrize("step", [0, -1, -2])
     def test_a_non_positive_step_is_rejected(self, foo, step):
-        with pytest.raises(RuntimeError, match="stride step must be positive"):
+        # A zero step never gets past the parser (nslang); a negative one
+        # parses and is rejected when the stride is resolved.
+        with pytest.raises(
+            RuntimeError, match="stride step must be positive|step cannot be zero"
+        ):
             foo.read(f"read foo[0:6:{step}]")
 
     ############# get_all
@@ -802,7 +806,7 @@ class TestQuerySyntaxEdges:
     #
     # `blimit N` is documented (docs/index.md) and used in 14 places in this
     # suite, but it is not implemented: "blimit" is not a keyword in
-    # check_keyword (src/nscore/compiler/ns_lexer.c), so `read foo[0:] blimit 8`
+    # the lexer (libs/nslang/src/tokens.rs), so `read foo[0:] blimit 8`
     # parses as `read foo[0:]` plus trailing junk that the parser drops. Even
     # `blimit notanumber` and `blimit -4` are accepted.
     #
@@ -860,7 +864,7 @@ class TestDeleteVerb:
     """`delete [if exists] <name>` and `get if exists <name>`.
 
     Both are in the grammar (parse_query_delete / parse_query_get in
-    src/nscore/compiler/parsers/ns_parse_query.c) and neither had a Python
+    libs/nslang/src/parser/query.rs) and neither had a Python
     test before this file.
     """
 
@@ -944,14 +948,6 @@ class TestDeleteVerb:
         assert db.get_all() == []
 
     ############# delete if exists
-    @pytest.mark.xfail(
-        reason="the `if exists` flag is dead. parse_query_delete stores it in "
-        "query.delete.if_exists, ns_query.c compares it, and nothing else ever "
-        "reads it -- so the executor still raises \"Variable: nope doesn't "
-        'exist", which is the one thing the clause exists to prevent.',
-        strict=True,
-        raises=RuntimeError,
-    )
     def test_delete_if_exists_on_a_missing_variable_is_a_noop(self, db):
         db.execute("delete if exists nope")
 

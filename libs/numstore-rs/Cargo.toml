@@ -8,5 +8,10 @@ license.workspace = true
 name = "numstore_rs"
 crate-type = ["staticlib"]
 
+[dependencies]
+# libnumstore.a calls into nslang for the language (lexer, parser, types), so
+# whatever links numstore has to link nslang as well.
+nslang = { path = "../nslang" }
+
 [build-dependencies]
 bindgen = "0.71.0"

@@ -24,7 +24,6 @@
 #include "core/ns_utils.h"
 #include "core/os/ns_malloc.h"
 #include "nscore/compiler/ns_compiler.h"
-#include "nscore/compiler/ns_lexer.h"
 #include "nscore/page/ns_page_var_hash_page.h"
 #include "nscore/types/ns_types.h"
 

@@ -1,9 +1,0 @@
-list(
-    APPEND LIBNUMSTORE_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/ns_lexer.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/ns_tokens.c
-)
-
-add_subdirectory(parsers)
-
-set(LIBNUMSTORE_SRCS ${LIBNUMSTORE_SRCS} PARENT_SCOPE)

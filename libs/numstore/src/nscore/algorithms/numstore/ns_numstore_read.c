@@ -47,6 +47,11 @@ numstore_read (
   // The step started as a positive i64, so it fits in sb_size
   ASSERT (stride.stride <= (u64)I64_MAX);
 
+  // An empty range - the rope takes nelem == 0 as "no limit"
+  if (stride.nelems == 0) {
+    return 0;
+  }
+
   return ns_rope_read (
       (struct ns_read_params){
           .p      = p,

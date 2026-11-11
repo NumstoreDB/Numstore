@@ -68,6 +68,19 @@ ns_open_common (const char *path, error *e)
   return db;
 }
 
+// Copies the message of [e] into [erstr] and null terminates it
+static void
+ns_copy_errstr (char erstr[], unsigned elen, const error *e)
+{
+  if (elen == 0) {
+    return;
+  }
+
+  const u32 len = MIN (e->cmlen, elen - 1);
+  memcpy (erstr, e->cause_msg, len);
+  erstr[len] = '\0';
+}
+
 nsdb_t *
 ns_open (const char *path)
 {
@@ -81,7 +94,7 @@ ns_open_with_error (const char *path, char erstr[], unsigned elen)
   error   e   = error_create ();
   nsdb_t *ret = ns_open_common (path, &e);
   if (ret == NULL) {
-    memcpy (erstr, e.cause_msg, MIN (e.cmlen, elen));
+    ns_copy_errstr (erstr, elen, &e);
     return NULL;
   }
   return ret;
@@ -141,7 +154,7 @@ ns_smfile_open_with_error (const char *path, char erstr[], unsigned elen)
   error   e   = error_create ();
   nsdb_t *ret = ns_smfile_open_common (path, &e);
   if (ret == NULL) {
-    memcpy (erstr, e.cause_msg, MIN (e.cmlen, elen));
+    ns_copy_errstr (erstr, elen, &e);
     return NULL;
   }
   return ret;
@@ -315,6 +328,8 @@ query_vsnprintf (const char *fmt, va_list ap, struct arena_alloc *alloc, error *
 nsdb_plan_t *
 ns_plan_fcreate (nsdb_t *db, const char *fmt, ...)
 {
+  error_reset (db->e);
+
   va_list args;
   va_start (args, fmt);
   nsdb_plan_t *ret = nsdb_plan_vcreate (db, fmt, NULL, args);
@@ -337,7 +352,7 @@ ns_execute (nsdb_t *db, struct txn *tx, const char *fmt, ...)
   va_start (ap, fmt);
 
   ALLOC_INIT (temp);
-  char *query = query_vsnprintf (fmt, ap, &temp, NULL);
+  char *query = query_vsnprintf (fmt, ap, &temp, db->e);
   va_end (ap);
   if (query == NULL) {
     ALLOC_CLOSE (temp);
@@ -352,6 +367,8 @@ ns_execute (nsdb_t *db, struct txn *tx, const char *fmt, ...)
 int
 ns_plan_execute (nsdb_plan_t *plan, struct txn *tx)
 {
+  error_reset (plan->parent->e);
+
   // TODO: nsdb_plan_execute returns an sb_size count for QT_REMOVE, which
   // this int truncates past INT32_MAX. See the matching TODO on nsdb_execute.
   return (int)nsdb_plan_execute (plan, tx, plan->parent->e);
@@ -366,7 +383,7 @@ ns_get_var (nsdb_t *db, struct txn *tx, const char *query, ...)
   va_start (ap, query);
 
   ALLOC_INIT (temp);
-  char *formatted = query_vsnprintf (query, ap, &temp, NULL);
+  char *formatted = query_vsnprintf (query, ap, &temp, db->e);
   va_end (ap);
   if (formatted == NULL) {
     ALLOC_CLOSE (temp);
@@ -383,6 +400,7 @@ ns_get_var (nsdb_t *db, struct txn *tx, const char *query, ...)
 nsdb_var_t *
 ns_plan_get_var (nsdb_plan_t *plan, struct txn *tx)
 {
+  error_reset (plan->parent->e);
   return nsdb_plan_get_var (plan, tx, plan->parent->e);
 }
 
@@ -395,7 +413,7 @@ ns_read (nsdb_t *db, txn_t *txn, void *dest, b_size dlen, const char *fmt, ...)
   va_start (ap, fmt);
 
   ALLOC_INIT (temp);
-  char *query = query_vsnprintf (fmt, ap, &temp, NULL);
+  char *query = query_vsnprintf (fmt, ap, &temp, db->e);
   va_end (ap);
   if (query == NULL) {
     ALLOC_CLOSE (temp);
@@ -415,6 +433,7 @@ ns_read (nsdb_t *db, txn_t *txn, void *dest, b_size dlen, const char *fmt, ...)
 sb_size
 ns_plan_read (nsdb_plan_t *plan, txn_t *tx, void *dest, b_size dlen)
 {
+  error_reset (plan->parent->e);
   return nsdb_plan_read (plan, tx, dest, dlen, plan->parent->e);
 }
 
@@ -427,7 +446,7 @@ ns_malloc (nsdb_t *db, txn_t *txn, b_size *dlen, const char *fmt, ...)
   va_start (ap, fmt);
 
   ALLOC_INIT (temp);
-  char *query = query_vsnprintf (fmt, ap, &temp, NULL);
+  char *query = query_vsnprintf (fmt, ap, &temp, db->e);
   va_end (ap);
   if (query == NULL) {
     ALLOC_CLOSE (temp);
@@ -448,6 +467,7 @@ ns_malloc (nsdb_t *db, txn_t *txn, b_size *dlen, const char *fmt, ...)
 void *
 ns_plan_malloc (nsdb_plan_t *plan, struct txn *tx, b_size *dlen)
 {
+  error_reset (plan->parent->e);
   return nsdb_plan_read_malloc (plan, tx, dlen, plan->parent->e);
 }
 
@@ -460,7 +480,7 @@ ns_write (nsdb_t *db, txn_t *txn, const void *src, b_size dlen, const char *fmt,
   va_start (ap, fmt);
 
   ALLOC_INIT (temp);
-  char *query = query_vsnprintf (fmt, ap, &temp, NULL);
+  char *query = query_vsnprintf (fmt, ap, &temp, db->e);
   va_end (ap);
   if (query == NULL) {
     ALLOC_CLOSE (temp);
@@ -475,6 +495,7 @@ ns_write (nsdb_t *db, txn_t *txn, const void *src, b_size dlen, const char *fmt,
 sb_size
 ns_plan_write (nsdb_plan_t *plan, txn_t *tx, const void *src, b_size dlen)
 {
+  error_reset (plan->parent->e);
   return nsdb_plan_write (plan, tx, src, dlen, plan->parent->e);
 }
 

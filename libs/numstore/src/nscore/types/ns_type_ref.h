@@ -17,17 +17,14 @@
 
 #include "core/ns_arena_alloc.h"
 #include "core/ns_error.h" // error
-#include "core/ns_linked_list.h"
 #include "core/ns_platform.h"
 #include "core/ns_stdtypes.h" // u32 ...etc
 #include "core/ns_string.h"
 #include "nscore/types/ns_type_accessor.h"
+#include "nscore/types/ns_types.h"
 
+#include <nslang.h>
 #include <stdbool.h>
-
-struct arena_alloc;
-struct builder;
-struct type;
 
 /******************************************************************************
  * SECTION: Type Reference
@@ -73,13 +70,24 @@ struct type_ref
   };
 };
 
-bool type_ref_equal (struct type_ref left, struct type_ref right);
-struct type *tr_construct (
-    struct type        *reftype,
-    struct type_ref    *tr,
-    struct arena_alloc *alloc,
-    error              *e
-);
+HEADER_FUNC bool
+type_ref_equal (struct type_ref left, struct type_ref right)
+{
+  return nslang_type_ref_equal (&left, &right);
+}
+
+HEADER_FUNC struct type *
+tr_construct (struct type *reftype, struct type_ref *tr, struct arena_alloc *alloc, error *e)
+{
+  struct nslang_error ne;
+  NSLANG_ARENA (a, alloc, e);
+
+  struct type *ret = nslang_tr_construct (reftype, tr, &a, &ne);
+  if (ret == NULL) {
+    nslang_raise (e, &ne);
+  }
+  return ret;
+}
 
 /*-----------------------------------------------------------------------------
  * SUBSECTION: Simple Stack Constructors
@@ -109,40 +117,5 @@ tr_struct (u16 len, struct string *keys, struct type_ref *types)
       },
   };
 }
-
-/******************************************************************************
- * SECTION: Key Value Type Reference List
- * ----------------------------------------------------------------------------
- * @brief A reference of key and values
- ******************************************************************************/
-
-struct kvt_ref_list
-{
-  u16              len;
-  struct string   *keys;
-  struct type_ref *types;
-};
-
-struct kv_ref_llnode
-{
-  struct string   key;
-  struct type_ref value;
-  struct llnode   link;
-};
-
-struct kvt_ref_list_builder
-{
-  struct llnode  *head;
-
-  u16             klen;
-  u16             tlen;
-
-  struct builder *b;
-};
-
-struct kvt_ref_list_builder kvrlb_create (struct builder *b);
-err_t kvrlb_accept_key (struct kvt_ref_list_builder *ub, struct string key, error *e);
-err_t kvrlb_accept_type (struct kvt_ref_list_builder *ub, struct type_ref t, error *e);
-err_t kvrlb_build (struct kvt_ref_list *dest, struct kvt_ref_list_builder *ub, error *e);
 
 #endif

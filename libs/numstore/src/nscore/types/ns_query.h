@@ -15,11 +15,14 @@
 #ifndef NS_QUERY_H
 #define NS_QUERY_H
 
+#include "core/ns_error.h"
+#include "core/ns_platform.h"
 #include "core/ns_stdtypes.h"
 #include "core/ns_stride.h"
 #include "core/ns_string.h"
 #include "nscore/types/ns_types.h"
 
+#include <nslang.h>
 #include <stdbool.h>
 
 struct query
@@ -97,16 +100,15 @@ struct query
   };
 };
 
-bool query_equal (const struct query *left, const struct query *right);
+HEADER_FUNC err_t
+query_vname_of_interest (struct string *dest, const struct query *q, error *e)
+{
+  ASSERT (dest);
 
-err_t query_vname_of_interest (struct string *dest, const struct query *q, error *e);
-
-sb_size ns_query_fcompile (
-    struct arena_alloc *alloc, // Where to allocate query
-    const char         *fmt,   // Format string
-    va_list             ap,    // Var args
-    struct query       *q,     // destination
-    error              *e
-);
+  if (!query_vname (dest, q)) {
+    return error_causef (e, ERR_INVALID_ARGUMENT, "Unsupported query type - no variable exists");
+  }
+  return SUCCESS;
+}
 
 #endif

@@ -1,0 +1,13 @@
+[package]
+name = "nslang"
+description = "The numstore language: lexer, parser, types and their C interface"
+version.workspace = true
+edition = "2024"
+rust-version = "1.85"
+license.workspace = true
+
+[dependencies]
+
+[lib]
+name = "nslang"
+crate-type = ["staticlib", "rlib"]

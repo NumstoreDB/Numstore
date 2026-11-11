@@ -31,6 +31,14 @@ if(MSVC)
     target_compile_options(numstore PUBLIC /experimental:c11atomics)
 endif()
 
+# The language (lexer, parser, types) is the nslang rust crate. Its header
+# defines struct type, struct query, ... so everything that includes a
+# numstore header needs it too.
+target_link_libraries(
+    numstore
+    PUBLIC $<BUILD_INTERFACE:nslang> $<INSTALL_INTERFACE:numstore::nslang>
+)
+
 # Prefer using -pthread instead of -lpthread
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -49,6 +57,19 @@ install(
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+# nslang is an imported (cargo built) target, so it cannot join the export
+# set. Install its archive and header next to numstore's; numstoreConfig.cmake
+# declares them as numstore::nslang, which the exported numstore target links.
+install(
+    FILES $<TARGET_PROPERTY:nslang-static,IMPORTED_LOCATION>
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RENAME ${CMAKE_STATIC_LIBRARY_PREFIX}nslang${CMAKE_STATIC_LIBRARY_SUFFIX}
+)
+install(
+    DIRECTORY ${PROJECT_SOURCE_DIR}/libs/nslang/include/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
 
 # The installed package carries the version from version.txt, so a consumer can
 # pin it with find_package(numstore 1.5).

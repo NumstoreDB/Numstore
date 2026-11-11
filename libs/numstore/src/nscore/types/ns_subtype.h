@@ -15,15 +15,10 @@
 #ifndef NS_SUBTYPE_H
 #define NS_SUBTYPE_H
 
-#include "core/ns_arena_alloc.h"
-#include "core/ns_error.h" // error
 #include "core/ns_string.h"
 #include "nscore/types/ns_type_accessor.h"
 
-#include <stdbool.h>
-
-struct arena_alloc;
-struct type;
+#include <nslang.h>
 
 /******************************************************************************
  * SECTION: Sub Type
@@ -36,14 +31,5 @@ struct subtype
   struct string        vname;
   struct type_accessor ta;
 };
-
-struct subtype subtype_create (struct string vname, struct type_accessor ta);
-bool subtype_equal (const struct subtype *left, const struct subtype *right);
-struct type *subtype_get_type (
-    struct type          *stype,
-    struct type_accessor *ta,
-    struct arena_alloc   *alloc,
-    error                *e
-);
 
 #endif

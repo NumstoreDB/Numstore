@@ -332,7 +332,7 @@ dlgt_move_right (page *src, page *dest, const p_size len)
 HEADER_FUNC void
 dlgt_link (page *left, page *right)
 {
-  DBG_ASSERT (page_base, left);
+  // Either side can be NULL - the left most page has no left sibling
   pgno _left  = PGNO_NULL;
   pgno _right = PGNO_NULL;
 

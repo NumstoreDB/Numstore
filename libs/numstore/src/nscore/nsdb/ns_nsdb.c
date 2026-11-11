@@ -678,7 +678,7 @@ nsdb_plan_execute (struct nsdb_plan *ns, struct txn *user_tx, error *_e)
       break;
     }
     case QT_DELETE: {
-      ret = numstore_delete (ns->parent->p, tx, ns->q.delete.name, false, e);
+      ret = numstore_delete (ns->parent->p, tx, ns->q.delete.name, ns->q.delete.if_exists, e);
       break;
     }
 
@@ -1552,8 +1552,6 @@ nsdb_read (struct nsdb *db, struct txn *txn, void *dest, b_size dlen, const char
 
   DBG_ASSERT (nsdb, db);
   ASSERT (query);
-  ASSERT (dest);
-  ASSERT (dlen > 0);
 
   struct nsdb_plan *plan = nsdb_plan_create (db, query, e);
   if (plan == NULL) {
@@ -1600,8 +1598,6 @@ nsdb_write (
 
   DBG_ASSERT (nsdb, db);
   ASSERT (query);
-  ASSERT (src);
-  ASSERT (dlen > 0);
 
   struct nsdb_plan *plan = nsdb_plan_create (db, query, e);
   if (plan == NULL) {

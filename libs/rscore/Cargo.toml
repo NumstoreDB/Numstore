@@ -1,0 +1,13 @@
+[package]
+name = "rscore"
+description = "Core common library for numstore rust"
+version.workspace = true
+edition = "2024"
+rust-version = "1.85"
+license.workspace = true
+
+[dependencies]
+
+[lib]
+name = "rscore"
+crate-type = ["staticlib", "rlib"]
