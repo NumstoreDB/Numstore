@@ -21,11 +21,11 @@
  * Compiles the given query string and prints the compiled query to stdout.
  */
 
-#include "core/ns_arena_alloc.h"
-#include "core/ns_error.h"
-#include "core/ns_string.h"
-#include "nscore/compiler/ns_compiler.h"
-#include "nscore/types/ns_query.h"
+#include "ns_arena_alloc.h"
+#include "ns_compiler.h"
+#include "ns_error.h"
+#include "ns_string.h"
+#include "types/ns_query.h"
 
 #include <stdio.h>
 #include <stdlib.h>

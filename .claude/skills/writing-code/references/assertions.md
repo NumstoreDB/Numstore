@@ -49,7 +49,7 @@ and writing them is how you define the program as you write it.
 In Numstore
 -----------
 
-The macros live in `core/ns_csx_assert.h`. All of them compile away under
+The macros live in `common/ns_csx_assert.h`. All of them compile away under
 `NDEBUG`.
 
 | Macro                                      | Use                                         |

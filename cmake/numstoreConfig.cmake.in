@@ -3,4 +3,13 @@
 include(CMakeFindDependencyMacro)
 find_dependency(Threads)
 
+# numstore::ns_numstore and the static libraries under it, one per directory
+# of libs/
 include("${CMAKE_CURRENT_LIST_DIR}/numstoreTargets.cmake")
+
+# The name to link to. It brings the rest with it
+if(NOT TARGET numstore::numstore)
+    add_library(numstore::numstore ALIAS numstore::ns_numstore)
+endif()
+
+check_required_components(numstore)

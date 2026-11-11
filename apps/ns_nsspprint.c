@@ -12,11 +12,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_logging.h"
-#include "core/os/ns_malloc.h"
-#include "core/os/ns_os.h"
-#include "nscore/disk_pager/ns_file_pager.h"
-#include "nscore/page/ns_page.h"
+#include "ns_file_pager.h"
+#include "ns_logging.h"
+#include "ns_page.h"
+#include "os/ns_malloc.h"
+#include "os/ns_os.h"
 
 #include <stdio.h>
 #include <stdlib.h>

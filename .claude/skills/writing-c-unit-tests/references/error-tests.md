@@ -10,7 +10,7 @@ added later are covered automatically.
 The tools
 ---------
 
-From `core/os/ns_os.h`, `core/os/ns_malloc.h` and `core/ns_crash.h`:
+From `common/os/ns_os.h`, `common/os/ns_malloc.h` and `common/ns_crash.h`:
 
 | Call                                        | Effect                                      |
 | ------------------------------------------- | ------------------------------------------- |

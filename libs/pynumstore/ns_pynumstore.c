@@ -15,17 +15,17 @@
 // ns_pynumstore.h must come first: it includes <Python.h> (which has to precede
 // every system header) and sets the NumPy API macros before numpy/arrayobject.h
 // is pulled in. Including a numpy header before it locks in the wrong config.
-#include "core/ns_error.h"
-#include "nscore/algorithms/var/ns_var_algorithms.h"
-#include "nscore/variables/ns_variables.h"
+#include "ns_error.h"
+#include "types/ns_variables.h"
+#include "var/ns_var_algorithms.h"
 #define PYNUMSTORE_MODULE_MAIN
-#include "core/ns_csx_assert.h"
-#include "core/os/ns_malloc.h"
-#include "core/os/ns_os.h"
+#include "ns_compiler.h"
+#include "ns_csx_assert.h"
+#include "ns_nsdb.h"
 #include "ns_pynumstore.h"
-#include "nscore/compiler/ns_compiler.h"
-#include "nscore/nsdb/ns_nsdb.h"
-#include "nscore/types/ns_types.h"
+#include "os/ns_malloc.h"
+#include "os/ns_os.h"
+#include "types/ns_types.h"
 
 //////////////////////////////// Constants
 
@@ -50,30 +50,77 @@ _pyns_set_error_from_e (PyObject *exc_type, error *e)
   PyErr_SetString (exc_type, (e->cmlen > 0) ? e->cause_msg : "numstore operation failed");
 }
 
-// Every nsdb call reports through the error the database holds a pointer to.
-// Take the message and clear it, so the next call starts from a clean error.
+// A failed nsdb call leaves its error on the transaction it ran in and on
+// the database. These take it and raise it.
+//
+// The message is always a copy: the one inside the database can be
+// overwritten by the next failure. The copy comes from the database's
+// allocator and is freed here.
+
+// Raises [msg], a copied message of [ns], and frees it
 static void
-_pyns_set_error_from_nsdb (struct nsdb *ns)
+_pyns_raise_and_free (struct nsdb *ns, char *msg)
 {
-  error *e = ns->e;
-  PyErr_SetString (
-      PyExc_RuntimeError,
-      (e->cause_code < 0 && e->cmlen > 0) ? e->cause_msg : "numstore operation failed"
-  );
-  error_reset (e);
+  PyErr_SetString (PyExc_RuntimeError, (msg[0] != '\0') ? msg : "numstore operation failed");
+  ns->mem.table->free (ns->mem.self, msg);
+}
+
+// Raises the pending error of a call that ran in [txn] (NULL for a call that
+// ran in no transaction of the caller's). Returns false, with no Python
+// error set, when nothing is pending
+static bool
+_pyns_raise_pending (struct nsdb *ns, struct nsdb_txn *txn)
+{
+  // The database has the error of every failed call
+  char *db_msg = (char *)nsdb_consume_error (ns, true);
+
+  if (txn == NULL) {
+    if (db_msg == NULL) {
+      return false;
+    }
+    _pyns_raise_and_free (ns, db_msg);
+    return true;
+  }
+
+  // The transaction's error is the one no other caller can replace, so that
+  // is the one to raise. The database's copy was taken above so that it
+  // doesn't stay pending
+  char *txn_msg = (char *)nsdb_txn_consume_error (ns, txn, true);
+  if (txn_msg == NULL) {
+    if (db_msg == NULL) {
+      return false;
+    }
+    _pyns_raise_and_free (ns, db_msg);
+    return true;
+  }
+
+  if (db_msg != NULL) {
+    ns->mem.table->free (ns->mem.self, db_msg);
+  }
+  _pyns_raise_and_free (ns, txn_msg);
+  return true;
+}
+
+// Raises the error of a call that failed. [txn] as in _pyns_raise_pending
+static void
+_pyns_set_error_from_nsdb (struct nsdb *ns, struct nsdb_txn *txn)
+{
+  if (!_pyns_raise_pending (ns, txn)) {
+    PyErr_SetString (PyExc_RuntimeError, "numstore operation failed");
+  }
 }
 
 static void
-_pyns_set_error_from_plan (struct nsdb_plan *plan)
+_pyns_set_error_from_plan (struct nsdb_plan *plan, struct nsdb_txn *txn)
 {
   // A plan has no error of its own - it reports through the db it belongs to
-  _pyns_set_error_from_nsdb (plan->parent);
+  _pyns_set_error_from_nsdb (plan->parent, txn);
 }
 
 //////////////////////////////// Database lifecycle
 //
-// nsdb takes the OS layer and the error buffer from whoever opens it, so this
-// module owns both for as long as the database is open.
+// nsdb takes the OS layer from whoever opens it, so this module owns it for
+// as long as the database is open.
 
 static struct nsdb *
 _pyns_db_open (const char *path, error *e)
@@ -98,18 +145,6 @@ _pyns_db_open (const char *path, error *e)
     return NULL;
   }
 
-  // The database only keeps a pointer to its error, so that error has to
-  // outlive this call - _pyns_db_close frees it again
-  error *persistent = mem.table->malloc (mem.self, 1, sizeof *persistent, e);
-  if (persistent == NULL) {
-    nsdb_close (db, e);
-    system_os_free (os);
-    return NULL;
-  }
-  *persistent = error_create ();
-
-  nsdb_set_error (db, persistent);
-
   // Calls that are handed no transaction wrap themselves in one
   nsdb_allow_auto_txn (db);
 
@@ -119,14 +154,11 @@ _pyns_db_open (const char *path, error *e)
 static err_t
 _pyns_db_close (struct nsdb *db)
 {
-  // These all live inside db - copy them out before nsdb_close frees it
-  const struct i_os  os  = db->os;
-  const struct i_mem mem = db->mem;
-  error             *e   = db->e;
+  // This lives inside db - copy it out before nsdb_close frees it
+  const struct i_os os  = db->os;
 
-  error_reset (e);
-  const err_t ret = nsdb_close (db, NULL);
-  mem.table->free (mem.self, e);
+  error             e   = error_create ();
+  const err_t       ret = nsdb_close (db, &e);
   system_os_free (os);
   return ret;
 }
@@ -212,7 +244,7 @@ _unwrap_capsule (PyObject *capsule, const char *name, const void *sentinel)
 
 DEFINE_STRICT_X_CONVERTER (struct nsdb, db, DB_CAPSULE, DB_CLOSED_SENTINEL)
 DEFINE_STRICT_X_CONVERTER (struct nsdb_var, var, VAR_CAPSULE, VAR_CLOSED_SENTINEL)
-DEFINE_NULLABLE_X_CONVERTER (struct txn, txn, TXN_CAPSULE, TXN_CLOSED_SENTINEL)
+DEFINE_NULLABLE_X_CONVERTER (struct nsdb_txn, txn, TXN_CAPSULE, TXN_CLOSED_SENTINEL)
 
 // A plan points at its parent db (plan->parent), so it is only usable while
 // that db is open. Each plan capsule holds a strong reference to its db
@@ -369,7 +401,7 @@ pyns_db_capsule_new (struct nsdb *db)
 }
 
 static PyObject *
-pyns_txn_capsule_new (struct txn *txn)
+pyns_txn_capsule_new (struct nsdb_txn *txn)
 {
   ASSERT (txn);
   ASSERT ((void *)txn != (void *)&TXN_CLOSED_SENTINEL);
@@ -988,10 +1020,10 @@ pyns_begin (PyObject *Py_UNUSED (m), PyObject *arg)
   }
 
   // Begin transaction
-  error_reset (ns->e);
-  struct txn *txn = nsdb_begin (ns, NULL);
+  error            e   = error_create ();
+  struct nsdb_txn *txn = nsdb_begin (ns, &e);
   if (txn == NULL) {
-    _pyns_set_error_from_nsdb (ns);
+    _pyns_set_error_from_e (PyExc_RuntimeError, &e);
     return NULL;
   }
 
@@ -999,7 +1031,7 @@ pyns_begin (PyObject *Py_UNUSED (m), PyObject *arg)
   // otherwise it stays open forever
   PyObject *ret = pyns_txn_capsule_new (txn);
   if (ret == NULL) {
-    nsdb_rollback (ns, txn, NULL);
+    nsdb_rollback (ns, txn);
   }
 
   return ret;
@@ -1008,8 +1040,8 @@ pyns_begin (PyObject *Py_UNUSED (m), PyObject *arg)
 PyObject *
 pyns_commit (PyObject *Py_UNUSED (m), PyObject *args)
 {
-  struct nsdb *db;
-  struct txn  *txn;
+  struct nsdb     *db;
+  struct nsdb_txn *txn;
 
   // pyns_commit(db: capsule, txn: capsule)
   if (!PyArg_ParseTuple (args, "O&O&", _db_arg, &db, _txn_arg, &txn)) {
@@ -1024,9 +1056,9 @@ pyns_commit (PyObject *Py_UNUSED (m), PyObject *args)
   PyObject *txn_obj = PyTuple_GET_ITEM (args, 1);
 
   // Do commit
-  error_reset (db->e);
-  if (nsdb_commit (db, txn, NULL) < 0) {
-    _pyns_set_error_from_nsdb (db);
+  if (nsdb_commit (db, txn) < 0) {
+    // The txn is gone, so its error is on the database
+    _pyns_set_error_from_nsdb (db, NULL);
     // The txn is finished either way - don't try to rollback
     PyCapsule_SetPointer (txn_obj, &TXN_CLOSED_SENTINEL);
     return NULL;
@@ -1043,8 +1075,8 @@ pyns_commit (PyObject *Py_UNUSED (m), PyObject *args)
 PyObject *
 pyns_rollback (PyObject *Py_UNUSED (m), PyObject *args)
 {
-  struct nsdb *db;
-  struct txn  *txn;
+  struct nsdb     *db;
+  struct nsdb_txn *txn;
 
   // pyns_rollback(db: capsule, txn: capsule)
   if (!PyArg_ParseTuple (args, "O&O&", _db_arg, &db, _txn_arg, &txn)) {
@@ -1059,9 +1091,9 @@ pyns_rollback (PyObject *Py_UNUSED (m), PyObject *args)
   PyObject *txn_obj = PyTuple_GET_ITEM (args, 1);
 
   // Do rollback
-  error_reset (db->e);
-  if (nsdb_rollback (db, txn, NULL) < 0) {
-    _pyns_set_error_from_nsdb (db);
+  if (nsdb_rollback (db, txn) < 0) {
+    // The txn is gone, so its error is on the database
+    _pyns_set_error_from_nsdb (db, NULL);
     // The txn is finished either way
     PyCapsule_SetPointer (txn_obj, &TXN_CLOSED_SENTINEL);
     return NULL;
@@ -1120,8 +1152,8 @@ pyns_visit_var_consumer (struct variable *_var, void *_ctx, error *e)
 PyObject *
 pyns_get_all_vars (PyObject *Py_UNUSED (m), PyObject *args)
 {
-  struct nsdb *db;
-  struct txn  *txn;
+  struct nsdb     *db;
+  struct nsdb_txn *txn;
 
   // pyns_get_all_vars(db: capsule, txn: capsule | None)
   if (!PyArg_ParseTuple (args, "O&O&", _db_arg, &db, _txn_arg, &txn)) {
@@ -1132,7 +1164,7 @@ pyns_get_all_vars (PyObject *Py_UNUSED (m), PyObject *args)
   (void)txn;
 
   // Manually run this - no wrapper is available
-  error_reset (db->e);
+  error     e    = error_create ();
 
   PyObject *list = PyList_New (0);
   if (list == NULL) {
@@ -1144,15 +1176,13 @@ pyns_get_all_vars (PyObject *Py_UNUSED (m), PyObject *args)
       .list = list,
   };
 
-  if (ns_visit_variables (db->p, pyns_visit_var_consumer, &ctx, db->e) < 0) {
+  if (ns_visit_variables (db->p, pyns_visit_var_consumer, &ctx, &e) < 0) {
     Py_DECREF (list); // frees list + every capsule (and its var) in it
 
     // The consumer fails on Python errors too - keep that exception
     // (MemoryError, say) rather than papering over it with the db's message.
-    if (PyErr_Occurred ()) {
-      error_reset (db->e);
-    } else {
-      _pyns_set_error_from_nsdb (db);
+    if (!PyErr_Occurred ()) {
+      _pyns_set_error_from_e (PyExc_RuntimeError, &e);
     }
     return NULL;
   }
@@ -1177,10 +1207,10 @@ pyns_plan_create (PyObject *Py_UNUSED (m), PyObject *args)
 
   // Create the plan - nsdb_plan_create takes the query literally, so it is
   // never read as a format string
-  struct nsdb_plan *plan   = nsdb_plan_create (db, query, NULL);
+  error             e      = error_create ();
+  struct nsdb_plan *plan   = nsdb_plan_create (db, query, &e);
   if (plan == NULL) {
-    // There's no plan to ask for an error, so it comes from the db
-    _pyns_set_error_from_nsdb (db);
+    _pyns_set_error_from_e (PyExc_RuntimeError, &e);
     return NULL;
   }
 
@@ -1235,16 +1265,16 @@ PyObject *
 pyns_plan_execute (PyObject *Py_UNUSED (m), PyObject *args)
 {
   struct nsdb_plan *plan;
-  struct txn       *txn;
+  struct nsdb_txn  *txn;
 
   // pyns_plan_execute(plan: capsule, txn: capsule | None)
   if (!PyArg_ParseTuple (args, "O&O&", _plan_arg, &plan, _txn_arg, &txn)) {
     return NULL;
   }
 
-  const sb_size ret = nsdb_plan_execute (plan, txn, NULL);
+  const sb_size ret = nsdb_plan_execute (plan, txn);
   if (ret < 0) {
-    _pyns_set_error_from_plan (plan);
+    _pyns_set_error_from_plan (plan, txn);
     return NULL;
   }
 
@@ -1255,7 +1285,7 @@ PyObject *
 pyns_plan_get_var (PyObject *Py_UNUSED (m), PyObject *args)
 {
   struct nsdb_plan *plan;
-  struct txn       *txn;
+  struct nsdb_txn  *txn;
 
   // pyns_plan_get_var(plan: capsule, txn: capsule | None)
   if (!PyArg_ParseTuple (args, "O&O&", _plan_arg, &plan, _txn_arg, &txn)) {
@@ -1263,13 +1293,14 @@ pyns_plan_get_var (PyObject *Py_UNUSED (m), PyObject *args)
   }
 
   // Run the plan
-  struct nsdb_var *var = nsdb_plan_get_var (plan, txn, NULL);
+  struct nsdb_var *var = nsdb_plan_get_var (plan, txn);
   if (var == NULL) {
-    // "get if exists" on a missing variable - NULL but nothing went wrong
-    if (plan->parent->e->cause_code >= 0) {
+    // "get if exists" on a missing variable - NULL but nothing went wrong.
+    // Every failed call here takes its error, so none is left over from an
+    // earlier one
+    if (!_pyns_raise_pending (plan->parent, txn)) {
       Py_RETURN_NONE;
     }
-    _pyns_set_error_from_plan (plan);
     return NULL;
   }
 
@@ -1286,7 +1317,7 @@ PyObject *
 pyns_plan_read (PyObject *Py_UNUSED (m), PyObject *args)
 {
   struct nsdb_plan *plan;
-  struct txn       *txn;
+  struct nsdb_txn  *txn;
   Py_buffer         data;
 
   // pyns_plan_read(plan: capsule, txn: capsule | None, dest: Buffer)
@@ -1295,14 +1326,14 @@ pyns_plan_read (PyObject *Py_UNUSED (m), PyObject *args)
     return NULL;
   }
 
-  sb_size ret = nsdb_plan_read (plan, txn, data.buf, (b_size)data.len, NULL);
+  sb_size ret = nsdb_plan_read (plan, txn, data.buf, (b_size)data.len);
 
   // Release on every path - a leaked export leaves the caller's object locked
   // (e.g. a bytearray can never be resized again)
   PyBuffer_Release (&data);
 
   if (ret < 0) {
-    _pyns_set_error_from_plan (plan);
+    _pyns_set_error_from_plan (plan, txn);
     return NULL;
   }
 
@@ -1313,7 +1344,7 @@ PyObject *
 pyns_plan_malloc (PyObject *Py_UNUSED (m), PyObject *args)
 {
   struct nsdb_plan *plan;
-  struct txn       *txn;
+  struct nsdb_txn  *txn;
 
   // pyns_plan_malloc(plan: capsule, txn: capsule | None) -> bytes
   if (!PyArg_ParseTuple (args, "O&O&", _plan_arg, &plan, _txn_arg, &txn)) {
@@ -1321,9 +1352,9 @@ pyns_plan_malloc (PyObject *Py_UNUSED (m), PyObject *args)
   }
 
   b_size size = 0;
-  void  *buf  = nsdb_plan_read_malloc (plan, txn, &size, NULL);
+  void  *buf  = nsdb_plan_read_malloc (plan, txn, &size);
   if (buf == NULL) {
-    _pyns_set_error_from_plan (plan);
+    _pyns_set_error_from_plan (plan, txn);
     return NULL;
   }
 
@@ -1346,7 +1377,7 @@ PyObject *
 pyns_plan_write (PyObject *Py_UNUSED (m), PyObject *args)
 {
   struct nsdb_plan *plan;
-  struct txn       *txn;
+  struct nsdb_txn  *txn;
   Py_buffer         data;
 
   // pyns_plan_write(plan: capsule, txn: capsule | None, src: Buffer)
@@ -1355,12 +1386,12 @@ pyns_plan_write (PyObject *Py_UNUSED (m), PyObject *args)
     return NULL;
   }
 
-  sb_size ret = nsdb_plan_write (plan, txn, data.buf, (b_size)data.len, NULL);
+  sb_size ret = nsdb_plan_write (plan, txn, data.buf, (b_size)data.len);
 
   PyBuffer_Release (&data);
 
   if (ret < 0) {
-    _pyns_set_error_from_plan (plan);
+    _pyns_set_error_from_plan (plan, txn);
     return NULL;
   }
 

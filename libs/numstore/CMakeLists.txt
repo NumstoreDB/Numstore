@@ -1,52 +1,28 @@
-set(LIBNUMSTORE_SRCS "")
+set(NS_NUMSTORE_SRCS "")
 
-# These append to LIBNUMSTORE_SRCS
-add_subdirectory(src/core)
-add_subdirectory(src/nscore)
+# This appends to NS_NUMSTORE_SRCS
+add_subdirectory(tests)
 
 # pynumstore only uses numstore internals - not the public api
 if(NOT SKBUILD)
-    list(APPEND LIBNUMSTORE_SRCS src/numstore.c)
+    list(APPEND NS_NUMSTORE_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/numstore.c)
 endif()
 
-# The main library and it's aliases
-add_library(numstore STATIC ${LIBNUMSTORE_SRCS})
-add_library(numstore::numstore ALIAS numstore)
+# The public library: the ns_* api in include/numstore.h, and the tests that
+# need the whole database
+ns_add_library(ns_numstore ${NS_NUMSTORE_SRCS})
+add_library(numstore::numstore ALIAS ns_numstore)
+target_link_libraries(
+    ns_numstore
+    PUBLIC ns_common ns_types ns_disk_pager ns_page ns_algorithms ns_nsdb
+)
 
-if(EXPERIMENTAL_HIERARCHIAL_TXNS)
-    target_compile_definitions(numstore PRIVATE EXPERIMENTAL_HIERARCHIAL_TXNS)
-endif()
-
+# The one public header
 target_include_directories(
-    numstore
+    ns_numstore
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-)
-set_target_properties(numstore PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-# MSVC needs experimental for c11 atomics
-if(MSVC)
-    target_compile_options(numstore PUBLIC /experimental:c11atomics)
-endif()
-
-# Prefer using -pthread instead of -lpthread
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
-target_link_libraries(numstore PUBLIC Threads::Threads)
-
-# long double / complex helpers are in libm on glibc.
-if(UNIX AND NOT APPLE)
-    target_link_libraries(numstore PUBLIC m)
-endif()
-
-# Install
-install(
-    TARGETS numstore
-    EXPORT numstoreTargets
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 

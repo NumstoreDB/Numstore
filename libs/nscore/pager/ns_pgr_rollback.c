@@ -1,0 +1,387 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+
+#include "lock_table/ns_lock_table.h"
+#include "ns_testing.h"
+#include "pager/ns_page_fixture.h"
+#include "pager/ns_pager.h"
+#include "wal/ns_wal_record.h"
+
+#ifndef NDEBUG
+static void
+pgr_flush_wal (struct pager *p)
+{
+  DBG_ASSERT (pager, p);
+  wal_flush_all (p->ww);
+}
+#endif
+
+err_t
+pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
+{
+  DBG_ASSERT (pager, p);
+
+  struct wal_rec_hdr_read  rdhdr;
+  struct wal_rec_hdr_read *log_rec      = NULL;
+  page_h                   ph           = page_h_create (); // Used for every undo
+  lsn                      undo_nxt_lsn = tx->data.undo_next_lsn;
+  lsn                      prev_lsn     = undo_nxt_lsn; // The lsn of the last record written
+
+  // First ensure the wal is flushed so that any undoable log is readable
+  if (undo_nxt_lsn > 0) {
+    wal_flush_all (p->ww);
+  }
+
+  while (save_lsn < undo_nxt_lsn) {
+    log_rec = wal_read_entry (p->ww, &rdhdr, undo_nxt_lsn, e);
+    if (log_rec == NULL) {
+      return error_trace (e);
+    }
+
+    switch (log_rec->type) {
+      case WL_UPDATE: {
+        if (wrh_is_undoable (log_rec)) {
+          pgno pg = wrh_get_affected_pg (log_rec);
+          if (pgr_get_writable (&ph, NULL, PG_PERMISSIVE, pg, p, e) < 0) {
+            goto failed;
+          }
+
+          // Undo and append a clr log
+          prev_lsn = wal_append_clr_log (p->ww, wrh_undo (log_rec, tx, &ph));
+
+          page_set_page_lsn (page_h_w (&ph), prev_lsn);
+          tx->data.last_lsn = prev_lsn;
+
+          // The undo dirtied this page. If the page was flushed since the
+          // update it undoes (evicted, checkpointed) it's not in the dirty
+          // page table anymore, and a page that isn't in there never gets
+          // written out again - the undo would be lost on the next eviction
+          //
+          // ARIES: this is part of ARIES, not an addition to it
+          //      - 4.4: any page fixed for an update that isn't already
+          //        dirty goes in the dirty page table with RecLSN = the
+          //        LSN of the record about to be written. An undo is an
+          //        update like any other (it's why it writes a CLR)
+          //      - Fig. 10: analysis does the same thing for a CLR it
+          //        reads, so after a crash this page would be in the table
+          //      - Fig. 8 (rollback) doesn't show it because in the paper
+          //        the buffer manager does it on fix. Here the forward path
+          //        does it in pgr_release, and rollback doesn't go through
+          //        pgr_release - so it's done by hand
+          //      - RecLSN is the CLR's lsn: the page was clean, so the CLR
+          //        is the first record redo would need for it
+          err_t dirty       = dpgt_add_if_ne (p->dpt, pg, prev_lsn, e);
+
+          pgr_unfix (&ph, PG_PERMISSIVE);
+
+          if (dirty < 0) {
+            goto failed;
+          }
+        }
+
+        undo_nxt_lsn = log_rec->update.prev;
+
+        if (undo_nxt_lsn == 0) {
+          wal_append_end_log (p->ww, tx->tid, prev_lsn);
+          // The loop ends here: save_lsn < 0 is never true
+        }
+        break;
+      }
+
+      case WL_CLR: {
+        undo_nxt_lsn = log_rec->clr.undo_next;
+        break;
+      }
+
+      case WL_BEGIN: {
+        undo_nxt_lsn = 0;
+        break;
+      }
+      case WL_COMMIT:
+      case WL_END: {
+        return error_causef (
+            e,
+            ERR_CORRUPT,
+            "unexpected log record during rollback (lsn=%" PRlsn ")",
+            undo_nxt_lsn
+        );
+      }
+    }
+
+    tx->data.undo_next_lsn = undo_nxt_lsn;
+  }
+
+  lockt_unlock_tx (p->lt, tx);
+
+  if (undo_nxt_lsn > 0) {
+    wal_flush_all (p->ww);
+    goto failed;
+  }
+
+  txnt_remove_txn_expect (p->tnxt, tx);
+  tx->data.state = TX_DONE;
+
+  return SUCCESS;
+
+failed:
+  return error_trace (e);
+}
+
+#ifndef NDEBUG
+TEST (aries_rollback_basic)
+{
+  test_assert_int_equal (pgr_delete_single_file ("testdb", ctx->os, &ctx->e), SUCCESS);
+
+  struct pager *p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
+  test_assert (p != NULL);
+  struct txn tx;
+  page_h     fsm = page_h_create ();
+  page_h     pg  = page_h_create ();
+
+  // Create pages in a transaction
+  {
+    pgr_begin_txn (&tx, p, &ctx->e);
+
+    for (int i = 0; i < 3; ++i) {
+      page_h dl_page = page_h_create ();
+      test_assert_int_equal (pgr_new (&dl_page, p, &tx, PG_DATA_LIST, &ctx->e), SUCCESS);
+      dl_make_valid (page_h_w (&dl_page));
+      test_assert_int_equal (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e), SUCCESS);
+    }
+
+    pgr_flush_wal (p);
+  }
+
+  // Verify FSM has all pages before rollback
+  {
+    test_assert_int_equal (pgr_get (&fsm, PG_FREE_SPACE_MAP, 0, p, &ctx->e), SUCCESS);
+
+    for (p_size i = 0; i < FS_BTMP_NPGS; ++i) {
+      if (i < 4) {
+        test_assert_int_equal (fsm_get_bit (page_h_ro (&fsm), i), 1);
+      } else {
+        test_assert_int_equal (fsm_get_bit (page_h_ro (&fsm), i), 0);
+      }
+    }
+
+    test_assert_int_equal (pgr_release (p, &fsm, PG_FREE_SPACE_MAP, &ctx->e), SUCCESS);
+  }
+
+  // Rollback the transaction
+  {
+    pgr_rollback (p, &tx, 0, &ctx->e);
+  }
+
+  // Verify pages are trash after rollback
+  {
+    for (int i = 1; i < 3; ++i) {
+      pgr_get (&pg, PG_TRASH, (pgno)i, p, &ctx->e);
+      pgr_release (p, &pg, PG_TRASH, &ctx->e);
+    }
+  }
+
+  // Verify FSM reflects rolled back state
+  {
+    test_assert_int_equal (pgr_get (&fsm, PG_FREE_SPACE_MAP, 0, p, &ctx->e), SUCCESS);
+
+    for (p_size i = 1; i < FS_BTMP_NPGS; ++i) {
+      test_assert_int_equal (fsm_get_bit (page_h_ro (&fsm), i), 0);
+    }
+
+    test_assert_int_equal (pgr_release (p, &fsm, PG_FREE_SPACE_MAP, &ctx->e), SUCCESS);
+  }
+
+  pgr_close (p, &ctx->e);
+}
+
+TEST (aries_rollback_multiple_updates)
+{
+  test_assert_int_equal (pgr_delete_single_file ("testdb", ctx->os, &ctx->e), SUCCESS);
+
+  struct pager *p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
+  test_assert (p != NULL);
+  struct txn tx;
+  struct txn tx2;
+  page_h     dl_page = page_h_create ();
+  pgno       pgno1;
+  u8         initial_data[DL_DATA_SIZE];
+
+  // Txn 1: create and commit initial data
+  {
+    pgr_begin_txn (&tx, p, &ctx->e);
+
+    test_assert_int_equal (pgr_new (&dl_page, p, &tx, PG_DATA_LIST, &ctx->e), SUCCESS);
+    dl_make_valid (page_h_w (&dl_page));
+
+    memset (initial_data, 0xAA, DL_DATA_SIZE);
+    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = initial_data, .blen = DL_DATA_SIZE});
+
+    pgno1 = page_h_ro (&dl_page)->pg;
+    test_assert_int_equal (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e), SUCCESS);
+    pgr_commit (p, &tx, &ctx->e);
+  }
+
+  // Txn 2: make multiple updates then rollback
+  {
+    pgr_begin_txn (&tx2, p, &ctx->e);
+
+    pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &ctx->e);
+    u8 update1_data[DL_DATA_SIZE];
+    memset (update1_data, 0xBB, DL_DATA_SIZE);
+    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = update1_data, .blen = DL_DATA_SIZE});
+    test_assert_int_equal (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e), SUCCESS);
+
+    pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &ctx->e);
+    u8 update2_data[DL_DATA_SIZE];
+    memset (update2_data, 0xCC, DL_DATA_SIZE);
+    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = update2_data, .blen = DL_DATA_SIZE});
+    test_assert_int_equal (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e), SUCCESS);
+
+    pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &ctx->e);
+    u8 update3_data[DL_DATA_SIZE];
+    memset (update3_data, 0xDD, DL_DATA_SIZE);
+    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = update3_data, .blen = DL_DATA_SIZE});
+    test_assert_int_equal (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e), SUCCESS);
+
+    pgr_flush_wal (p);
+    pgr_rollback (p, &tx2, 0, &ctx->e);
+  }
+
+  // Verify data is back to initial state
+  {
+    pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &ctx->e);
+    test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), initial_data, DL_DATA_SIZE);
+    pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e);
+  }
+
+  pgr_close (p, &ctx->e);
+}
+
+TEST (aries_rollback_with_crash_recovery)
+{
+  test_assert_int_equal (pgr_delete_single_file ("testdb", ctx->os, &ctx->e), SUCCESS);
+
+  struct pager *p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
+  test_assert (p != NULL);
+  struct txn tx;
+  struct txn tx2;
+  page_h     dl_page = page_h_create ();
+  pgno       pgno1;
+  u8         committed_data[DL_DATA_SIZE];
+
+  // Txn 1: create and commit data
+  {
+    pgr_begin_txn (&tx, p, &ctx->e);
+
+    test_assert_int_equal (pgr_new (&dl_page, p, &tx, PG_DATA_LIST, &ctx->e), SUCCESS);
+
+    memset (committed_data, 0xAA, DL_DATA_SIZE);
+    dl_set_data (
+        page_h_w (&dl_page),
+        (struct dl_data){.data = committed_data, .blen = DL_DATA_SIZE}
+    );
+
+    pgno1 = page_h_ro (&dl_page)->pg;
+    test_assert_int_equal (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e), SUCCESS);
+    pgr_commit (p, &tx, &ctx->e);
+  }
+
+  // Txn 2: make changes then crash without commit or rollback
+  {
+    pgr_begin_txn (&tx2, p, &ctx->e);
+
+    pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &ctx->e);
+    u8 uncommitted_data[DL_DATA_SIZE];
+    memset (uncommitted_data, 0xBB, DL_DATA_SIZE);
+    dl_set_data (
+        page_h_w (&dl_page),
+        (struct dl_data){.data = uncommitted_data, .blen = DL_DATA_SIZE}
+    );
+    test_assert_int_equal (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e), SUCCESS);
+
+    pgr_flush_wal (p);
+    test_assert_int_equal (pgr_crash (p, &ctx->e), SUCCESS);
+  }
+
+  // Verify data is back to committed state after recovery
+  {
+    p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
+    pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &ctx->e);
+    test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), committed_data, DL_DATA_SIZE);
+    pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e);
+  }
+
+  pgr_close (p, &ctx->e);
+}
+
+TEST (aries_rollback_clr_not_undone)
+{
+  test_assert_int_equal (pgr_delete_single_file ("testdb", ctx->os, &ctx->e), SUCCESS);
+
+  struct pager *p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
+  test_assert (p != NULL);
+  struct txn tx;
+  struct txn tx2;
+  page_h     dl_page = page_h_create ();
+  pgno       pgno1;
+  u8         initial_data[DL_DATA_SIZE];
+
+  // Txn 1 - normal commit
+  {
+    pgr_begin_txn (&tx, p, &ctx->e);
+
+    test_assert_int_equal (pgr_new (&dl_page, p, &tx, PG_DATA_LIST, &ctx->e), SUCCESS);
+    dl_make_valid (page_h_w (&dl_page));
+
+    memset (initial_data, 0xAA, DL_DATA_SIZE);
+    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = initial_data, .blen = DL_DATA_SIZE});
+
+    pgno1 = page_h_ro (&dl_page)->pg;
+    test_assert_int_equal (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e), SUCCESS);
+    pgr_commit (p, &tx, &ctx->e);
+  }
+
+  // Txn 2: make update then rollback (generates CLRs)
+  {
+    pgr_begin_txn (&tx2, p, &ctx->e);
+
+    pgr_get_writable (&dl_page, &tx2, PG_DATA_LIST, pgno1, p, &ctx->e);
+
+    u8 temp_data[DL_DATA_SIZE];
+    memset (temp_data, 0xBB, DL_DATA_SIZE);
+    dl_set_data (page_h_w (&dl_page), (struct dl_data){.data = temp_data, .blen = DL_DATA_SIZE});
+    test_assert_int_equal (pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e), SUCCESS);
+
+    pgr_rollback (p, &tx2, 0, &ctx->e);
+  }
+
+  // Verify data is back to initial
+  {
+    pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &ctx->e);
+    test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), initial_data, DL_DATA_SIZE);
+    pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e);
+  }
+
+  // Crash and recover - verify CLRs were not undone
+  {
+    test_assert_int_equal (pgr_crash (p, &ctx->e), SUCCESS);
+    p = pgr_open ("testdb", ctx->mem, ctx->os, &ctx->e);
+    pgr_get (&dl_page, PG_DATA_LIST, pgno1, p, &ctx->e);
+    test_assert_memequal (dl_get_data (page_h_ro (&dl_page)), initial_data, DL_DATA_SIZE);
+    pgr_release (p, &dl_page, PG_DATA_LIST, &ctx->e);
+  }
+
+  pgr_close (p, &ctx->e);
+}
+#endif

@@ -1,0 +1,7 @@
+list(
+    APPEND NS_COMMON_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/ns_posix.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ns_posix_os.c
+)
+
+set(NS_COMMON_SRCS ${NS_COMMON_SRCS} PARENT_SCOPE)

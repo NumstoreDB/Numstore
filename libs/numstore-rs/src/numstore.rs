@@ -31,10 +31,19 @@ fn rstocstr(fname: &str) -> Result<CString> {
         .map_err(|_| Error::new(ErrorType::InvalidArgument, "Expected valid filename"))
 }
 
-unsafe fn clone_cstrtostr(ptr: *const c_char) -> String {
-    assert!(!ptr.is_null());
-    CStr::from_ptr(ptr).to_string_lossy().into_owned()
+/// Turns an error message that numstore copied for us into a String, and
+/// frees the copy. None when there was no error to take.
+unsafe fn take_errstr(ptr: *const c_char) -> Option<String> {
+    if ptr.is_null() {
+        return None;
+    }
+    let msg = CStr::from_ptr(ptr).to_string_lossy().into_owned();
+    free(ptr as *mut std::os::raw::c_void);
+    Some(msg)
 }
+
+// What a failed call reports when there is no message to take
+const NO_MESSAGE: &str = "numstore operation failed";
 
 pub struct CBuf {
     ptr: NonNull<u8>,
@@ -135,17 +144,22 @@ pub fn rs_ns_var_free(var: NonNull<nsdb_var_t>) {
 
 /// Error Handling
 
+// A failed call leaves its error on the database until someone takes it.
+// These always ask for a copy (the message inside the database can be
+// overwritten by the next failure), turn it into a String and free it.
+
 pub fn rs_ns_strerror(db: NonNull<nsdb_t>) -> String {
-    unsafe { clone_cstrtostr(ns_strerror(db.as_ptr())) }
+    unsafe { take_errstr(ns_strerror(db.as_ptr(), true)) }.unwrap_or_else(|| NO_MESSAGE.into())
 }
 
-pub fn rs_ns_plan_strerror(db: NonNull<nsdb_plan_t>) -> String {
-    unsafe { clone_cstrtostr(ns_plan_strerror(db.as_ptr())) }
+pub fn rs_ns_plan_strerror(plan: NonNull<nsdb_plan_t>) -> String {
+    unsafe { take_errstr(ns_plan_strerror(plan.as_ptr(), true)) }
+        .unwrap_or_else(|| NO_MESSAGE.into())
 }
 
 /// Transactions
 
-pub fn rs_ns_begin(db: NonNull<nsdb_t>) -> Result<NonNull<txn_t>> {
+pub fn rs_ns_begin(db: NonNull<nsdb_t>) -> Result<NonNull<nsdb_txn_t>> {
     let handle = unsafe { ns_begin(db.as_ptr()) };
     NonNull::new(handle).ok_or_else(|| {
         let msg = rs_ns_strerror(db);
@@ -153,7 +167,7 @@ pub fn rs_ns_begin(db: NonNull<nsdb_t>) -> Result<NonNull<txn_t>> {
     })
 }
 
-pub fn rs_ns_commit(db: NonNull<nsdb_t>, tx: NonNull<txn_t>) -> Result<()> {
+pub fn rs_ns_commit(db: NonNull<nsdb_t>, tx: NonNull<nsdb_txn_t>) -> Result<()> {
     let ret = unsafe { ns_commit(db.as_ptr(), tx.as_ptr()) };
 
     if ret < 0 {
@@ -163,7 +177,7 @@ pub fn rs_ns_commit(db: NonNull<nsdb_t>, tx: NonNull<txn_t>) -> Result<()> {
     }
 }
 
-pub fn rs_ns_rollback(db: NonNull<nsdb_t>, tx: NonNull<txn_t>) -> Result<()> {
+pub fn rs_ns_rollback(db: NonNull<nsdb_t>, tx: NonNull<nsdb_txn_t>) -> Result<()> {
     let ret = unsafe { ns_rollback(db.as_ptr(), tx.as_ptr()) };
 
     if ret < 0 {
@@ -188,7 +202,10 @@ pub fn rs_ns_plan_free(plan: NonNull<nsdb_plan_t>) {
     unsafe { ns_plan_free(plan.as_ptr()) };
 }
 
-pub fn rs_ns_plan_execute(plan: NonNull<nsdb_plan_t>, tx: Option<NonNull<txn_t>>) -> Result<()> {
+pub fn rs_ns_plan_execute(
+    plan: NonNull<nsdb_plan_t>,
+    tx: Option<NonNull<nsdb_txn_t>>,
+) -> Result<()> {
     let ret = unsafe {
         let tx = tx.map_or(std::ptr::null_mut(), |p| p.as_ptr());
         ns_plan_execute(plan.as_ptr(), tx)
@@ -203,7 +220,7 @@ pub fn rs_ns_plan_execute(plan: NonNull<nsdb_plan_t>, tx: Option<NonNull<txn_t>>
 
 pub fn rs_ns_plan_get_var(
     plan: NonNull<nsdb_plan_t>,
-    tx: Option<NonNull<txn_t>>,
+    tx: Option<NonNull<nsdb_txn_t>>,
 ) -> Result<Option<NonNull<nsdb_var_t>>> {
     let handle = unsafe {
         let tx = tx.map_or(std::ptr::null_mut(), |p| p.as_ptr());
@@ -214,20 +231,17 @@ pub fn rs_ns_plan_get_var(
         return Ok(Some(handle));
     }
 
-    // NULL with no error string is "get if exists" on a missing variable
-    let msg = unsafe { ns_plan_strerror(plan.as_ptr()) };
-    if msg.is_null() {
-        Ok(None)
-    } else {
-        Err(Error::new(ErrorType::IoErr, unsafe {
-            clone_cstrtostr(msg)
-        }))
+    // NULL with no error is "get if exists" on a missing variable. Every
+    // failed call here takes its error, so none is left from an earlier one
+    match unsafe { take_errstr(ns_plan_strerror(plan.as_ptr(), true)) } {
+        None => Ok(None),
+        Some(msg) => Err(Error::new(ErrorType::IoErr, msg)),
     }
 }
 
 pub fn rs_ns_plan_read(
     plan: NonNull<nsdb_plan_t>,
-    tx: Option<NonNull<txn_t>>,
+    tx: Option<NonNull<nsdb_txn_t>>,
     dest: &mut [u8],
 ) -> Result<b_size> {
     let ret = unsafe {
@@ -249,7 +263,7 @@ pub fn rs_ns_plan_read(
 
 pub fn rs_ns_plan_write(
     plan: NonNull<nsdb_plan_t>,
-    tx: Option<NonNull<txn_t>>,
+    tx: Option<NonNull<nsdb_txn_t>>,
     src: &[u8],
 ) -> Result<b_size> {
     let ret = unsafe {
@@ -264,7 +278,10 @@ pub fn rs_ns_plan_write(
     }
 }
 
-pub fn rs_ns_plan_malloc(plan: NonNull<nsdb_plan_t>, tx: Option<NonNull<txn_t>>) -> Result<CBuf> {
+pub fn rs_ns_plan_malloc(
+    plan: NonNull<nsdb_plan_t>,
+    tx: Option<NonNull<nsdb_txn_t>>,
+) -> Result<CBuf> {
     let mut dlen: b_size = 0;
     let handle = unsafe {
         let tx = tx.map_or(std::ptr::null_mut(), |p| p.as_ptr());

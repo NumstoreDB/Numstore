@@ -1,6 +1,6 @@
 ---
 name: working-with-aries-logic
-description: The ARIES recovery algorithm (WAL, LSNs, CLRs, repeating history, analysis/redo/undo, fuzzy checkpoints, nested top actions) and how it maps onto Numstore's pager, WAL, transaction table and dirty page table. Use whenever you read, change, debug or test logging, commit, rollback, checkpoint, crash or restart recovery code (libs/numstore/src/nscore/pager, wal, txn_table, dpg_table), or reason about whether a log or page state is correct after a crash.
+description: The ARIES recovery algorithm (WAL, LSNs, CLRs, repeating history, analysis/redo/undo, fuzzy checkpoints, nested top actions) and how it maps onto Numstore's pager, WAL, transaction table and dirty page table. Use whenever you read, change, debug or test logging, commit, rollback, checkpoint, crash or restart recovery code (libs/nscore/pager, wal, txn_table, dpg_table), or reason about whether a log or page state is correct after a crash.
 ---
 
 Working with ARIES logic
@@ -127,13 +127,13 @@ Where it lives in Numstore
 
 | ARIES                         | Numstore                                                        |
 | ----------------------------- | --------------------------------------------------------------- |
-| Log, LSNs, forcing            | `nscore/wal/` (`wal_append_*`, `wal_flush_all`)                 |
-| Record types                  | `nscore/wal/ns_wal_record.h`: `WL_BEGIN`, `WL_COMMIT`, `WL_END`, `WL_UPDATE`, `WL_CLR` (physical, fsm, file-extend and dummy CLR variants) |
+| Log, LSNs, forcing            | `wal/` (`wal_append_*`, `wal_flush_all`)                 |
+| Record types                  | `wal/ns_wal_record.h`: `WL_BEGIN`, `WL_COMMIT`, `WL_END`, `WL_UPDATE`, `WL_CLR` (physical, fsm, file-extend and dummy CLR variants) |
 | PrevLSN / UndoNxtLSN          | `.prev` / `.undo_next` on the write structs                     |
-| page_LSN                      | `page_get_page_lsn` / `page_set_page_lsn` (`nscore/page/ns_page.h`) |
-| Txn table                     | `nscore/txn_table/` (`struct txn_data`: `last_lsn`, `undo_next_lsn`, `state`) |
-| Dirty page table              | `nscore/dpg_table/` (`dpgt_add`, `dpgt_min_rec_lsn`, ...)       |
-| Begin / commit / end          | `pgr_begin_txn`, `pgr_commit` (`nscore/pager/`)                 |
+| page_LSN                      | `page_get_page_lsn` / `page_set_page_lsn` (`page/ns_page.h`) |
+| Txn table                     | `txn_table/` (`struct txn_data`: `last_lsn`, `undo_next_lsn`, `state`) |
+| Dirty page table              | `dpg_table/` (`dpgt_add`, `dpgt_min_rec_lsn`, ...)       |
+| Begin / commit / end          | `pgr_begin_txn`, `pgr_commit` (`pager/`)                 |
 | Rollback to savepoint         | `pgr_rollback (p, tx, save_lsn, e)`                             |
 | Checkpoint (not fuzzy, see below) | `ns_pgr_checkpoint.c` (`pgr_launch_checkpoint_thread`), `pgr_write_next_lsn` |
 | Restart                       | `pgr_recover`, `pgr_detect_wal_and_recover`                     |

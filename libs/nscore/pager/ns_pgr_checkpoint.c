@@ -1,0 +1,193 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+
+#include "lock_table/ns_lock_table.h"
+#include "ns_testing.h"
+#include "os/ns_os.h"
+#include "pager/ns_page_fixture.h"
+#include "pager/ns_pager.h"
+
+#include <stdatomic.h>
+
+static err_t
+pgr_refresh_wal (struct pager *p, error *e)
+{
+  DBG_ASSERT (pager, p);
+  if (wal_delete_and_reopen (p->ww, e) < 0) {
+    return error_trace (e);
+  }
+  return SUCCESS;
+}
+
+static err_t
+pgr_deletion_blocking_checkpoint (struct pager *p, error *e)
+{
+  DBG_ASSERT (pager, p);
+
+  i_log_debug ("Starting Checkpoint - locking the database\n");
+
+  // First, lock the entire database
+  if (lockt_lock (p->lt, lock_db (), LM_X, NULL, e) < 0) {
+    return error_trace (e);
+  }
+
+  i_log_debug ("Checkpoint - lock acquired\n");
+
+  // pgr_crash let us in only so that it can stop this thread
+  if ((atomic_load (&p->flags) & PGR_CRASHING) != 0) {
+    goto theend;
+  }
+
+  // Flush all pages - so the database is consistent
+  if (pgr_flush_all_pages (p, e) < 0) {
+    goto theend;
+  }
+
+  // Flush the WAL
+  wal_flush_all (p->ww);
+
+  lsn end_lsn = wal_start_lsn (p->ww) + wal_size (p->ww);
+  i_log_info ("CHECKPOINT: Next start of the lsn = %" PRlsn "\n", end_lsn);
+
+  // Write the next min lsn slot
+  if (pgr_write_next_lsn (p, end_lsn, e) < 0) {
+    goto theend;
+  }
+
+  // Delete the WAL and replace it with a fresh one
+  if (pgr_refresh_wal (p, e) < 0) {
+    goto theend;
+  }
+
+  ASSERT (wal_isnew (p->ww));
+
+  // Write the next start lsn for the WAL
+  if (wal_write_start_lsn (p->ww, end_lsn, e) < 0) {
+    goto theend;
+  }
+
+theend:
+  lockt_unlock (p->lt, lock_db (), LM_X);
+
+  // Every goto above is a failure path - a checkpoint that could not flush,
+  // write the next lsn or reopen the wal has to say so
+  return error_trace (e);
+}
+
+static void
+pgr_do_checkpoint (void *ctx)
+{
+  struct pager *p = ctx;
+  error         e = error_create ();
+  if (pgr_deletion_blocking_checkpoint (p, &e) < 0) {
+    error_log_consume (&e);
+  }
+}
+
+err_t
+pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e)
+{
+  DBG_ASSERT (pager, p);
+  return periodic_task_start (&p->checkpoint_task, msec, pgr_do_checkpoint, p, e);
+}
+
+#ifndef NDEBUG
+struct args
+{
+  struct pager *p;
+  _Atomic u32   done;
+};
+
+static void *
+producer_thread (void *_args)
+{
+  struct args *args = _args;
+  error        e    = error_create ();
+  page_h       a    = page_h_create ();
+  struct txn   tx;
+
+  while (!args->done) {
+    pgr_begin_txn (&tx, args->p, &e);
+
+    pgr_new (&a, args->p, &tx, PG_DATA_LIST, &e);
+    dl_make_valid (page_h_w (&a));
+    pgr_release (args->p, &a, PG_DATA_LIST, &e);
+
+    pgr_commit (args->p, &tx, &e);
+  }
+
+  return NULL;
+}
+
+// TODO - this test fails because pgr_new is not safe on error
+TEST (pgr_checkpoint)
+{
+  TEST_CASE ("smoke test")
+  {
+    struct pgr_fixture f;
+    pgr_fixture_create (&f, &ctx->e);
+    pgr_launch_checkpoint_thread (f.p, 100, &ctx->e);
+
+    struct args args = {
+        .p    = f.p,
+        .done = 0,
+    };
+
+    i_thread producer;
+    ctx->os.table->thread_create (ctx->os.self, &producer, producer_thread, &args, &ctx->e);
+    i_sleep_ms (1000);
+
+    args.done = 1;
+
+    ctx->os.table->thread_join (ctx->os.self, producer.self);
+
+    pgr_fixture_teardown (&f, &ctx->e);
+  }
+}
+
+// TODO: rework the wal_delete_and_reopen API, then enable this test. When
+// the reopen fails the wal is left with a NULL ostream, and the next append
+// dereferences it. Checking for NULL everywhere isn't the fix. Options:
+//
+// 1. Make delete_and_reopen return a wal, so pager->ww is NULL after a
+//    failure. Callers then need pager->ww != NULL checks.
+// 2. Never lose track of a valid WAL: open the new (empty) WAL first, then
+//    delete the old one and swap. The delete and swap need to be atomic.
+TEST_DISABLED (pgr_checkpoint_failure)
+{
+  err_t ret        = SUCCESS;
+  int   fail_after = 0;
+
+  do {
+    TEST_CASE ("Memory failure after: %d", fail_after)
+    {
+      struct pgr_fixture f;
+      faulty_mem_reset (ctx->faulty_mem);
+      pgr_fixture_create_with (&f, ctx->os, ctx->faulty_mem, &ctx->e);
+
+      faulty_mem_fail_after (ctx->faulty_mem, fail_after);
+      ret = pgr_deletion_blocking_checkpoint (f.p, &ctx->e);
+      faulty_mem_reset (ctx->faulty_mem);
+
+      error_reset (&ctx->e);
+      pgr_fixture_teardown_with (&f, &ctx->e);
+      error_reset (&ctx->e);
+
+      fail_after++;
+    }
+  }
+  while (ret != SUCCESS);
+}
+
+#endif

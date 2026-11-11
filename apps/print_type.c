@@ -21,10 +21,10 @@
  * Compiles the given type string and prints the compiled type to stdout.
  */
 
-#include "core/ns_arena_alloc.h"
-#include "core/ns_error.h"
-#include "nscore/compiler/ns_compiler.h"
-#include "nscore/types/ns_types.h"
+#include "ns_arena_alloc.h"
+#include "ns_compiler.h"
+#include "ns_error.h"
+#include "types/ns_types.h"
 
 #include <stdio.h>
 #include <stdlib.h>

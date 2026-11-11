@@ -12,12 +12,13 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_error.h"
-#include "core/ns_platform.h"
-#include "core/os/ns_malloc.h"
-#include "core/os/ns_os.h"
-#include "nscore/testing/simulation/ns_numstore_simulation.h"
-#include "nscore/testing/simulation/ns_operation_generator.h"
+#include "ns_error.h"
+#include "ns_nsdb.h"
+#include "ns_platform.h"
+#include "os/ns_malloc.h"
+#include "os/ns_os.h"
+#include "tests/simulation/ns_numstore_simulation.h"
+#include "tests/simulation/ns_operation_generator.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -37,6 +38,8 @@
 #define DEFAULT_COMMIT_HASH "foo"
 #define DEFAULT_SEQID       10
 #define DEFAULT_FAIL_PCT    0.0F
+#define DEFAULT_THREADS     2
+#define SIM_MAX_THREADS     64
 
 static _Atomic bool running = true;
 
@@ -61,6 +64,7 @@ print_usage (FILE *out, const char *prog)
       "  --commit-hash HASH   commit hash to record         (default: %s)\n"
       "  --seqid N            sequence id                   (default: %d)\n"
       "  --fail-percent P     fault injection rate in [0,1]  (default: %.4f)\n"
+      "  --threads N          threads, 1 to %d              (default: %d)\n"
       "  --disable ACTION     disable an action; repeatable\n"
       "  -h, --help           show this help\n"
       "\n"
@@ -71,6 +75,14 @@ print_usage (FILE *out, const char *prog)
       "--fail-percent. At 0 they are pure pass-through. Metrics and the\n"
       "reference model always run on the real OS and allocator.\n"
       "\n"
+      "With --threads above 1, every thread runs a simulation of its own,\n"
+      "all at the same time on one shared database. Each works on its own\n"
+      "variables and checks them against its own reference model. Two things\n"
+      "differ from a single threaded run: the crash and close actions are\n"
+      "off (they would take the database away from the other threads), and\n"
+      "a seed does not replay, because the threads interleave differently\n"
+      "on every run.\n"
+      "\n"
       "Actions (all enabled by default; NSS_ prefix and case optional):\n",
       prog,
       DEFAULT_DBNAME,
@@ -78,7 +90,9 @@ print_usage (FILE *out, const char *prog)
       DEFAULT_SEED,
       DEFAULT_COMMIT_HASH,
       DEFAULT_SEQID,
-      (double)DEFAULT_FAIL_PCT
+      (double)DEFAULT_FAIL_PCT,
+      SIM_MAX_THREADS,
+      DEFAULT_THREADS
   );
 
   for (int a = 0; a < NSS_AT_LEN; ++a) {
@@ -122,6 +136,46 @@ take_flag (const char *name, int argc, char **argv, int *i, const char **value)
   }
 
   return true;
+}
+
+struct sim_thread
+{
+  struct ns_simulation *simul;
+  i_timer               timer;
+  u64                   duration;
+  int                   rc;
+};
+
+// Steps one simulation until the time is up, something stops the run, or a
+// step fails. A failed step stops every thread
+static void *
+sim_thread_run (void *arg)
+{
+  struct sim_thread *t = arg;
+  error              e = error_create ();
+
+  while (running) {
+    if (ns_simul_step (t->simul, &e) < 0) {
+      error_log_consume (&e);
+      t->rc   = EXIT_FAILURE;
+      running = false;
+      break;
+    }
+
+    const u64 elapsed_ns = t->timer.table->timer_now_ns (t->timer.self);
+    if ((f64)elapsed_ns / 1e9 > (f64)t->duration) {
+      running = false;
+    }
+  }
+
+  // An open transaction holds locks that the other threads wait on. End it
+  // here, or a thread that waits never sees that the run is over
+  if (ns_simul_end_txn (t->simul, &e) < 0) {
+    error_log_consume (&e);
+    t->rc = EXIT_FAILURE;
+  }
+
+  return NULL;
 }
 
 /// Strict unsigned parse: whole string must be a number in [0, max]
@@ -210,6 +264,7 @@ main (int argc, char **argv)
   const char                 *commit_hash = DEFAULT_COMMIT_HASH;
   u64                         seqid       = DEFAULT_SEQID;
   float                       fail_pct    = DEFAULT_FAIL_PCT;
+  u64                         nthreads    = DEFAULT_THREADS;
 
   // All actions enabled by default
   memset (params.enabled, 1, sizeof (params.enabled));
@@ -258,6 +313,13 @@ main (int argc, char **argv)
       }
       if (!parse_prob (v, &fail_pct)) {
         return usage_error (argv[0], "invalid fail percent '%s' (must be in [0, 1])", v);
+      }
+    } else if (take_flag ("--threads", argc, argv, &i, &v)) {
+      if (v == NULL || *v == '\0') {
+        return usage_error (argv[0], "%s requires a value", arg);
+      }
+      if (!parse_u64 (v, SIM_MAX_THREADS, &nthreads) || nthreads == 0) {
+        return usage_error (argv[0], "invalid threads '%s' (must be 1 to %d)", v, SIM_MAX_THREADS);
       }
     } else if (take_flag ("--disable", argc, argv, &i, &v)) {
       enum ns_action_type a;
@@ -315,31 +377,21 @@ main (int argc, char **argv)
     return EXIT_FAILURE;
   }
 
-  params.seed                 = seed;
-  params.commit_hash          = commit_hash;
-  params.sequence_id          = (u32)seqid; // range-checked above
-  params.dbname               = dbname;
-  params.max_insert_len       = 1000000;
-  params.max_tsize            = 4096;
-  params.sample_space_prob    = 0;
-  params.reliable_mem         = reliable_mem;
-  params.reliable_os          = reliable_os;
-  params.test_mem             = test_mem;
-  params.test_os              = test_os;
-
-  struct ns_simulation *simul = ns_simul_open (params, &e);
-  if (simul == NULL) {
-    error_log_consume (&e);
-    faulty_mem_free (test_mem);
-    faulty_os_free (test_os);
-    system_os_free (reliable_os);
-    return EXIT_FAILURE;
-  }
+  params.seed              = seed;
+  params.commit_hash       = commit_hash;
+  params.sequence_id       = (u32)seqid; // range-checked above
+  params.dbname            = dbname;
+  params.max_insert_len    = 1000000;
+  params.max_tsize         = 4096;
+  params.sample_space_prob = 0;
+  params.reliable_mem      = reliable_mem;
+  params.reliable_os       = reliable_os;
+  params.test_mem          = test_mem;
+  params.test_os           = test_os;
 
   i_timer timer;
   if (reliable_os.table->timer_create (reliable_os.self, &timer, &e) < 0) {
     error_log_consume (&e);
-    ns_simul_close (simul, &e);
     faulty_mem_free (test_mem);
     faulty_os_free (test_os);
     system_os_free (reliable_os);
@@ -365,22 +417,76 @@ main (int argc, char **argv)
   }
 #endif
 
-  int rc = EXIT_SUCCESS;
+  int               rc     = EXIT_SUCCESS;
+  struct nsdb      *shared = NULL;
+  struct sim_thread threads[SIM_MAX_THREADS];
+  i_thread          handles[SIM_MAX_THREADS];
+  u64               nopen    = 0;
+  u64               nstarted = 0;
 
-  while (running) {
-    if (ns_simul_step (simul, &e) < 0) {
+  // One thread keeps the database to itself: it can crash and reopen it, and
+  // a seed replays. Several threads share one database
+  if (nthreads > 1) {
+    shared = ns_simul_shared_db_open (params, &e);
+    if (shared == NULL) {
+      error_log_consume (&e);
+      goto fail;
+    }
+    params.shared_db = shared;
+  }
+
+  for (u64 t = 0; t < nthreads; ++t) {
+    params.thread_id = (u32)t;
+    threads[t]       = (struct sim_thread){
+        .simul    = ns_simul_open (params, &e),
+        .timer    = timer,
+        .duration = duration,
+        .rc       = EXIT_SUCCESS,
+    };
+    if (threads[t].simul == NULL) {
       error_log_consume (&e);
       rc = EXIT_FAILURE;
       break;
     }
+    nopen++;
+  }
 
-    const u64 elapsed_ns = timer.table->timer_now_ns (timer.self);
-    if ((f64)elapsed_ns / 1e9 > (f64)duration) {
-      running = false;
+  if (rc == EXIT_SUCCESS && nthreads == 1) {
+    // On this thread, as it always was
+    sim_thread_run (&threads[0]);
+  } else if (rc == EXIT_SUCCESS) {
+    // All at once
+    for (u64 t = 0; t < nthreads; ++t) {
+      if (reliable_os.table
+              ->thread_create (reliable_os.self, &handles[t], sim_thread_run, &threads[t], &e)
+          < 0) {
+        error_log_consume (&e);
+        rc      = EXIT_FAILURE;
+        running = false;
+        break;
+      }
+      nstarted++;
+    }
+    for (u64 t = 0; t < nstarted; ++t) {
+      reliable_os.table->thread_join (reliable_os.self, handles[t].self);
     }
   }
 
-  ns_simul_close (simul, &e);
+  for (u64 t = 0; t < nopen; ++t) {
+    if (threads[t].rc != EXIT_SUCCESS) {
+      rc = EXIT_FAILURE;
+    }
+    if (ns_simul_close (threads[t].simul, &e) < 0) {
+      error_log_consume (&e);
+      rc = EXIT_FAILURE;
+    }
+  }
+
+  if (shared != NULL && ns_simul_shared_db_close (shared, &e) < 0) {
+    error_log_consume (&e);
+    rc = EXIT_FAILURE;
+  }
+
   reliable_os.table->timer_free (reliable_os.self, timer.self);
   faulty_mem_free (test_mem);
   faulty_os_free (test_os);
@@ -389,7 +495,6 @@ main (int argc, char **argv)
   return rc;
 
 fail:
-  ns_simul_close (simul, &e);
   reliable_os.table->timer_free (reliable_os.self, timer.self);
   faulty_mem_free (test_mem);
   faulty_os_free (test_os);

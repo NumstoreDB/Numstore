@@ -1,6 +1,0 @@
-list(
-    APPEND LIBNUMSTORE_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/ns_insert_same_var_multithreaded.c
-)
-
-set(LIBNUMSTORE_SRCS ${LIBNUMSTORE_SRCS} PARENT_SCOPE)

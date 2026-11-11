@@ -1,0 +1,130 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+
+#include "ns_error.h"
+#include "ns_stdtypes.h"
+#include "ns_testing.h"
+#include "pager/ns_page_fixture.h"
+#include "pager/ns_pager.h"
+
+static inline u32
+pgr_spin_clock (struct pager *p)
+{
+  // The mask below is a modulo, which needs a power of two. It also keeps the
+  // index in range when the counter wraps.
+  ASSERT ((MEMORY_PAGE_LEN & (MEMORY_PAGE_LEN - 1)) == 0);
+  return atomic_fetch_add (&p->clock, 1) & (MEMORY_PAGE_LEN - 1);
+}
+
+i32
+pgr_reserve_and_ctrl_lock (struct pager *p, error *e)
+{
+  DBG_ASSERT (pager, p);
+
+  struct page_frame *mp    = NULL;
+  u32                clock = pgr_spin_clock (p);
+
+  // Only start evicting after we've
+  // searched the entire page table for a spot
+  u32                iters = 0;
+
+  // Loop forever - this is highly concurrent
+  for (;; clock = pgr_spin_clock (p), iters++) {
+    mp = &p->pages[clock];
+
+    if (!latch_trylock (&mp->ctrl)) {
+      // If we can't lock - don't spin - just move on and find a new slot
+      continue;
+    }
+
+    // Found an empty spot
+    if (!(mp->flags & PW_PRESENT)) {
+      goto found_spot;
+    }
+
+    // Pinned, skip it
+    if (mp->pin > 0) {
+      latch_unlock (&mp->ctrl);
+      continue;
+    }
+
+    // Access bit is on - set off and continue
+    if (mp->flags & PW_ACCESS) {
+      mp->flags &= ~PW_ACCESS;
+
+      latch_unlock (&mp->ctrl);
+      continue;
+    }
+
+    if (iters >= MEMORY_PAGE_LEN) {
+      // Found a spot - but it's not being used - safe to evict it
+      if (pgr_evict_unsafe (p, mp, e) < 0) {
+        return error_trace (e);
+      }
+
+      goto found_spot;
+    } else {
+      // The first round - don't evict anything
+      latch_unlock (&mp->ctrl);
+    }
+  }
+
+found_spot:
+  ASSERT (clock < MEMORY_PAGE_LEN);
+  return (i32)clock;
+}
+
+#ifndef NDEBUG
+TEST (pgr_reserve_and_ctrl_lock_st)
+{
+  TEST_CASE ("single threaded clock iterator test")
+  {
+    struct pgr_fixture pgr;
+    pgr_fixture_create (&pgr, &ctx->e);
+
+    i32 clock1   = pgr_reserve_and_ctrl_lock (pgr.p, &ctx->e);
+    pgr.p->clock = 0;
+    i32 clock2   = pgr_reserve_and_ctrl_lock (pgr.p, &ctx->e);
+    pgr.p->clock = 0;
+    i32 clock3   = pgr_reserve_and_ctrl_lock (pgr.p, &ctx->e);
+    pgr.p->clock = 0;
+
+    test_assert_int_equal (clock1, 0);
+    test_assert_int_equal (clock2, 1);
+    test_assert_int_equal (clock3, 2);
+
+    latch_unlock (&pgr.p->pages[0].ctrl);
+    latch_unlock (&pgr.p->pages[1].ctrl);
+    latch_unlock (&pgr.p->pages[2].ctrl);
+
+    // If I don't do anything and just unlock - it should repeat
+    clock1       = pgr_reserve_and_ctrl_lock (pgr.p, &ctx->e);
+    pgr.p->clock = 0;
+    clock2       = pgr_reserve_and_ctrl_lock (pgr.p, &ctx->e);
+    pgr.p->clock = 0;
+    clock3       = pgr_reserve_and_ctrl_lock (pgr.p, &ctx->e);
+    pgr.p->clock = 0;
+
+    test_assert_int_equal (clock1, 0);
+    test_assert_int_equal (clock2, 1);
+    test_assert_int_equal (clock3, 2);
+
+    latch_unlock (&pgr.p->pages[0].ctrl);
+    latch_unlock (&pgr.p->pages[1].ctrl);
+    latch_unlock (&pgr.p->pages[2].ctrl);
+
+    pgr_fixture_teardown (&pgr, &ctx->e);
+  }
+}
+#endif

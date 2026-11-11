@@ -6,7 +6,7 @@ Numstore
 Features:
 ---------
 - **Single File.** The whole database lives in a single file. There is no
-  server - see `include/numstore.h`
+  server - see `libs/numstore/include/numstore.h`
 - **ACID.** Every insert, write and remove either happens completely or not at
   all, even if the process crashes partway through. Transactions are strictly
   serializable - one is open at a time - and crash recovery uses ARIES over a
@@ -139,18 +139,23 @@ cmake --build build/release
 
 What you get:
 
-* `include/numstore.h`: the only header you need
-* `build/release/lib/libnumstore.a`: the whole library in one static archive
+* `libs/numstore/include/numstore.h`: the only header you need
+* `build/release/lib/libns_*.a`: the library, as one static archive per layer
 * `build/release/bin/`: one binary per C sample in `samples/`, plus `ns_simtest`
 
 To compile a program of your own against it:
 
 ```sh
-cc -std=c11 -I include myprog.c build/release/lib/libnumstore.a -o myprog
+L=build/release/lib
+cc -std=c11 -I libs/numstore/include myprog.c \
+    $L/libns_numstore.a $L/libns_nsdb.a $L/libns_algorithms.a \
+    $L/libns_nscore.a $L/libns_disk_wal.a $L/libns_disk_pager.a \
+    $L/libns_types.a $L/libns_page.a $L/libns_common.a -o myprog
 ```
 
-On Linux add `-pthread -lm`. For a debug build, use
-`-B build/debug -DCMAKE_BUILD_TYPE=Debug` instead.
+The archives are listed so that each one comes before the ones it depends on,
+which is the order a GNU linker needs. On Linux add `-pthread -lm`. For a debug
+build, use `-B build/debug -DCMAKE_BUILD_TYPE=Debug` instead.
 
 The [C API Reference](docs/c_api.md) has the rest: linking from CMake, and a
 complete program for queries, transactions, crash recovery, packed structs,
@@ -159,8 +164,30 @@ prepared plans and smart files.
 Developing
 ----------
 
-One `CMakeLists.txt` builds everything, and `make` wraps the cmake invocations
-so the flags live in one place:
+The C code is a stack of static libraries under `libs/`, one directory each. A
+library's headers sit next to its sources, and its directory is its include
+directory, so `#include "ns_page.h"` names a file in `libs/page/` and
+`#include "pager/ns_pager.h"` one in `libs/nscore/`. Each library
+links to the ones it includes from, and nothing links upward:
+
+| Directory          | Library         | What it holds                                                           | Links to                                   |
+| ------------------ | --------------- | ----------------------------------------------------------------------- | ------------------------------------------ |
+| `libs/common/`     | `ns_common`     | data structures, errors, logging, the test framework, `os/`             | -                                          |
+| `libs/page/`       | `ns_page`       | the page formats                                                        | `common`                                   |
+| `libs/nslang/`     | `ns_types`      | the query language: lexer, parsers, types, variables                    | `common`, `page`                           |
+| `libs/disk_pager/` | `ns_disk_pager` | page sized reads and writes on the database file                        | `common`                                   |
+| `libs/disk_wal/`   | `ns_disk_wal`   | byte streams on the WAL file                                            | `common`                                   |
+| `libs/nscore/`     | `ns_nscore`     | `txn_table/`, `lock_table/`, `dpg_table/`, `wal/`, `pager/`             | `common`, `page`, `disk_pager`, `disk_wal` |
+| `libs/algorithms/` | `ns_algorithms` | what a query does to pages: `var/`, `rope/`, `numstore/`, `smartfiles/` | `page`, `nslang`, `nscore`                 |
+| `libs/nsdb/`       | `ns_nsdb`       | the database handle: open, close, transactions, plans                   | `page`, `nslang`, `nscore`, `algorithms`   |
+| `libs/numstore/`   | `ns_numstore`   | the public `ns_*` API, and the tests that need a database               | `nsdb` and what it needs                   |
+
+Only `ns_numstore` has a public header, `libs/numstore/include/numstore.h`.
+Everything else is private to the build. `libs/numstore-rs/` and
+`libs/pynumstore/` are the Rust and Python bindings.
+
+The root `CMakeLists.txt` builds everything, and `make` wraps the cmake
+invocations so the flags live in one place:
 
 | Target                 | What it does                                                       |
 | ---------------------- | ------------------------------------------------------------------ |
@@ -186,7 +213,7 @@ test-unit` and `make release-package` on every push.
 `./build/debug/bin/unit_tests 123142 wal` runs only the tests whose name
 contains `wal`. It exists in debug builds only: its `main` is generated at
 configure time by `apps/gen_tests.py`, which scrapes every `TEST(...)` in
-`libs/numstore/src/`.
+`libs/`.
 
 `ns_simtest` drives a database with random operations, checks it against a
 reference model and crashes it at random:

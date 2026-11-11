@@ -6,10 +6,10 @@ use std::ptr::NonNull;
 use crate::{
     errors::Result,
     numstore::{
-        b_size, nsdb_plan_t, nsdb_t, nsdb_var_t, rs_ns_begin, rs_ns_cleanup, rs_ns_close,
-        rs_ns_commit, rs_ns_open, rs_ns_plan_create, rs_ns_plan_execute, rs_ns_plan_free,
-        rs_ns_plan_get_var, rs_ns_plan_malloc, rs_ns_plan_read, rs_ns_plan_write, rs_ns_rollback,
-        rs_ns_var_free, rs_ns_var_len, txn_t, CBuf,
+        b_size, nsdb_plan_t, nsdb_t, nsdb_txn_t, nsdb_var_t, rs_ns_begin, rs_ns_cleanup,
+        rs_ns_close, rs_ns_commit, rs_ns_open, rs_ns_plan_create, rs_ns_plan_execute,
+        rs_ns_plan_free, rs_ns_plan_get_var, rs_ns_plan_malloc, rs_ns_plan_read, rs_ns_plan_write,
+        rs_ns_rollback, rs_ns_var_free, rs_ns_var_len, CBuf,
     },
 };
 
@@ -26,7 +26,7 @@ pub struct Plan {
 }
 
 pub struct Txn {
-    handle: NonNull<txn_t>,
+    handle: NonNull<nsdb_txn_t>,
 }
 
 impl Plan {
@@ -313,6 +313,27 @@ mod tests {
 
         db.execute(None, "create foo u32")?;
         assert!(db.get(None, "get if exists foo")?.is_some());
+        Ok(())
+    }
+
+    // A failed call's error is taken when it is turned into an Err, so it
+    // isn't mistaken for the error of a later call
+    #[test]
+    fn get_if_exists_after_a_failed_call_is_none() -> Result<()> {
+        let path = db_path("get_if_exists_after_failure");
+        let _clean = Cleanup(path.clone());
+        let db = Database::open(&path)?;
+
+        let err = db.execute(None, "this is not a query").err().unwrap();
+        assert!(!err.message.is_empty());
+        assert!(db.get(None, "get if exists nope")?.is_none());
+
+        // The same inside a transaction
+        let txn = db.begin()?;
+        let mut dest = [0u8; 4];
+        assert!(db.read(Some(&txn), &mut dest, "read nope").is_err());
+        assert!(db.get(Some(&txn), "get if exists nope")?.is_none());
+        db.rollback(&txn)?;
         Ok(())
     }
 

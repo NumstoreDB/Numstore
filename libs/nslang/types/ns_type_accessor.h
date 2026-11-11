@@ -1,0 +1,158 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+
+#ifndef NS_TYPE_ACCESSOR_H
+#define NS_TYPE_ACCESSOR_H
+
+#include "ns_arena_alloc.h"
+#include "ns_byte_accessor.h"
+#include "ns_error.h"
+#include "ns_linked_list.h"
+#include "ns_platform.h"
+#include "ns_stdtypes.h"
+#include "ns_stride.h"
+#include "ns_string.h"
+
+#include <stdbool.h>
+
+struct arena_alloc;
+struct builder;
+struct type;
+
+/******************************************************************************
+ * SECTION: Type Accessor
+ * ----------------------------------------------------------------------------
+ * @brief How to access an individual type
+ *
+ * Let's say you have a type:
+ *    create a struct { a u32, b struct { c [10][20] f32 } }
+ *
+ * A type accessor describes the rules to get a sub type of a
+ *    TAKE:
+ *
+ *        TAKE = struct { a u32, b f32 }
+ *
+ *    SELECT:
+ *
+ *        SELECT("a", TAKE) = u32
+ *        SELECT("b", SELECT("c", TAKE)) = [10][20]f32
+ *
+ *    RANGE
+ *
+ *        SELECT("a", RANGE("c", [{0, 2, 10}, {0, 2, 4}], TAKE)) = [5][2] f32
+ ******************************************************************************/
+
+struct type_accessor
+{
+  enum ta_type type;
+
+  union {
+    struct select_ta
+    {
+      struct string         key;
+      struct type_accessor *sub_ta;
+    } select;
+
+    struct range_ta
+    {
+      struct user_stride   *dim_accessors;
+      u32                   dlen;
+      struct type_accessor *sub_ta;
+    } range;
+  };
+};
+
+bool type_accessor_equal (struct type_accessor left, struct type_accessor right);
+struct type *ta_subtype (
+    struct type          *reftype,
+    struct type_accessor *ta,
+    struct arena_alloc   *alloc,
+    error                *e
+);
+struct byte_accessor *type_to_byte_accessor (
+    struct type_accessor *src,
+    struct type          *reftype,
+    struct arena_alloc   *dalloc,
+    error                *e
+);
+
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Simple Stack Constructors
+ *----------------------------------------------------------------------------*/
+
+#define ta_take() ((struct type_accessor){.type = TA_TAKE})
+
+#define ta_select(_key, _sub_ta) \
+  ((struct type_accessor){       \
+      .type   = TA_SELECT,       \
+      .select = {                \
+          .key    = (_key),      \
+          .sub_ta = (_sub_ta),   \
+      },                         \
+  })
+
+HEADER_FUNC struct type_accessor
+ta_range (struct user_stride *dim_accessors, u16 dlen, struct type_accessor *sub_ta)
+{
+  return (struct type_accessor){
+      .type  = TA_RANGE,
+      .range = (struct range_ta){
+          .dim_accessors = dim_accessors,
+          .dlen          = dlen,
+          .sub_ta        = sub_ta,
+      },
+  };
+}
+
+////////////////////////////////////////////////////////////
+/// BUILDER
+
+struct rb_llnode
+{
+  struct user_stride stride;
+  struct llnode      link;
+};
+
+struct range_builder
+{
+  struct llnode  *head;
+  u32             len;
+  struct builder *b;
+};
+
+struct range_builder rb_create (struct builder *b);
+err_t rb_accept_stride (struct range_builder *rb, struct user_stride stride, error *e);
+err_t rb_build (struct range_ta *dest, struct range_builder *rb, error *e);
+
+struct type_accessor_builder
+{
+  struct type_accessor  ret;
+  struct type_accessor *head;
+  struct type_accessor *tail;
+  struct builder       *b;
+  struct range_builder  rb;
+  bool                  in_range;
+};
+
+struct type_accessor_builder tab_create (struct builder *b);
+err_t tab_accept_select (struct type_accessor_builder *builder, struct string key, error *e);
+err_t tab_accept_stride (
+    struct type_accessor_builder *builder,
+    struct user_stride            stride,
+    error                        *e
+);
+err_t tab_accept_take (struct type_accessor_builder *builder, error *e);
+err_t tab_build (struct type_accessor *dest, struct type_accessor_builder *builder, error *e);
+
+#endif

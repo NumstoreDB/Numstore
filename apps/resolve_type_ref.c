@@ -22,11 +22,11 @@
  *   ./resolve_type_ref "struct { a u32, b f32 }" "struct { f a.a, g a }"
  */
 
-#include "core/ns_arena_alloc.h"
-#include "core/ns_error.h"
-#include "nscore/compiler/ns_compiler.h"
-#include "nscore/types/ns_type_ref.h"
-#include "nscore/types/ns_types.h"
+#include "ns_arena_alloc.h"
+#include "ns_compiler.h"
+#include "ns_error.h"
+#include "types/ns_type_ref.h"
+#include "types/ns_types.h"
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,0 +1,7 @@
+list(
+    APPEND NS_NSCORE_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/ns_lock_table.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ns_lt_lock.c
+)
+
+set(NS_NSCORE_SRCS ${NS_NSCORE_SRCS} PARENT_SCOPE)

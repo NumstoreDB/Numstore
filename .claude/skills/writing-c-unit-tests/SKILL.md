@@ -1,6 +1,6 @@
 ---
 name: writing-c-unit-tests
-description: How to write, place and run C tests in Numstore - the TEST/TEST_CASE framework, test_ctx, assertions, fixtures, test marks, fault injection, crash capture, regression tests and the simulation harness. Use whenever you add, change or review a C test under libs/numstore/src/.
+description: How to write, place and run C tests in Numstore - the TEST/TEST_CASE framework, test_ctx, assertions, fixtures, test marks, fault injection, crash capture, regression tests and the simulation harness. Use whenever you add, change or review a C test under libs/.
 ---
 
 Writing C tests in Numstore
@@ -23,7 +23,7 @@ Tests sit at the bottom of the `.c` file they test, inside `#ifndef NDEBUG`:
 
 ```c
 #ifndef NDEBUG
-#  include "core/ns_testing.h"
+#  include "ns_testing.h"
 #endif
 
 /* ... implementation ... */
@@ -37,7 +37,7 @@ TEST (wal_open)
 ```
 
 There is no registration. `apps/gen_tests.py` scrapes every `TEST (name)`
-under `libs/numstore/src/` and generates `unit_tests.c`. Test names must be unique across
+under `libs/` and generates `unit_tests.c`. Test names must be unique across
 the whole tree; prefix them with the module (`wal_`, `pgr_`, `lockt_`).
 
 Other places:
@@ -45,11 +45,12 @@ Other places:
 | Kind                          | Location                                                                   |
 | ----------------------------- | -------------------------------------------------------------------------- |
 | Unit tests                    | bottom of the `.c` under test                                              |
-| End to end ARIES / crash      | `libs/numstore/src/nscore/testing/ns_aries_tests.c`                        |
-| Public API (`ns_*`) txn flows | `libs/numstore/src/nscore/testing/numstore/NNNN_*.c`                       |
-| Regression tests              | `libs/numstore/src/nscore/testing/regressions/NNNN_*.c`                    |
+| End to end ARIES / crash      | `libs/numstore/tests/ns_aries_tests.c`                        |
+| Public API (`ns_*`) txn flows | `libs/numstore/tests/numstore/NNNN_*.c`                       |
+| Regression tests              | `libs/numstore/tests/regressions/NNNN_*.c`                    |
 | Multithreaded stress          | next to the algorithm, e.g. `algorithms/numstore/tests/`                   |
-| Randomized simulation         | `libs/numstore/src/nscore/testing/simulation/`, run by `apps/ns_simtest.c` |
+| Algorithm tests on a database | `libs/nsdb/tests/` - a library can't include one above it                  |
+| Randomized simulation         | `libs/numstore/tests/simulation/`, run by `apps/ns_simtest.c` |
 
 New files under `testing/` must be added to that directory's `CMakeLists.txt`.
 
@@ -68,7 +69,7 @@ The memcheck build uses `-Wextra -Werror`, so unused variables in tests break
 it. `make leaks-unit` doesn't rebuild an existing memcheck binary, so run
 `cmake --build build/memcheck -j12` first or you'll test stale code.
 
-The framework (`core/ns_testing.h`)
+The framework (`common/ns_testing.h`)
 -----------------------------------
 
 ### TEST and ctx
@@ -142,7 +143,7 @@ After asserting an expected error, call `error_reset (&ctx->e)` (or use
 ### Parameterized tests
 
 There's no parameterization macro. Use a static table and a loop with a
-`TEST_CASE` per row, as in `core/ns_tests.c`:
+`TEST_CASE` per row, as in `common/ns_tests.c`:
 
 ```c
 static const struct
@@ -220,7 +221,7 @@ Fixtures
 
 Reuse fixtures before writing setup by hand.
 
-- `struct pgr_fixture` (`nscore/page/ns_page_fixture.h`): a pager plus a
+- `struct pgr_fixture` (`pager/ns_page_fixture.h`): a pager plus a
   `txn` and an arena. `pgr_fixture_create (&f, &ctx->e)` uses the real OS and
   allocator; `pgr_fixture_create_with (&f, os, mem, &ctx->e)` takes your own
   (pass `ctx->faulty_os` / `ctx->faulty_mem` for error tests). Always pair with
@@ -245,7 +246,7 @@ Run it under `make valgrind-unit` or `make leaks-unit` too.
 Regression tests
 ----------------
 
-Every fixed bug gets one in `libs/numstore/src/nscore/testing/regressions/`, named
+Every fixed bug gets one in `libs/numstore/tests/regressions/`, named
 `NNNN_short_description.c` with the next free number, test name matching the
 file name. Keep it the smallest sequence that reproduces the bug, and put a
 `CAUSE:` comment at the step that used to fail:

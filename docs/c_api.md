@@ -1,9 +1,9 @@
 C API Reference
 ===============
 
-Numstore is a C11 library with one public header, `include/numstore.h`, and one
-static archive, `libnumstore.a`. There are no dependencies beyond libc, pthreads
-and libm.
+Numstore is a C11 library with one public header,
+`libs/numstore/include/numstore.h`, and a set of static archives that you link
+together. There are no dependencies beyond libc, pthreads and libm.
 
 If you are new to Numstore, read [the tour](index.md) first - it explains the
 query language and the type system this page assumes. It is written in Python,
@@ -40,18 +40,25 @@ cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release
 cmake --build build/release
 ```
 
-That leaves you with `build/release/lib/libnumstore.a` and the samples in
-`build/release/bin/`. To compile a program of your own against it:
+That leaves you with nine archives in `build/release/lib/` and the samples
+in `build/release/bin/`. `libns_numstore.a` is the public API; the rest are the
+layers under it. To compile a program of your own against them:
 
 ```sh
-cc -std=c11 -I include myprog.c build/release/lib/libnumstore.a -o myprog
+L=build/release/lib
+cc -std=c11 -I libs/numstore/include myprog.c \
+    $L/libns_numstore.a $L/libns_nsdb.a $L/libns_algorithms.a \
+    $L/libns_nscore.a $L/libns_disk_wal.a $L/libns_disk_pager.a \
+    $L/libns_types.a $L/libns_page.a $L/libns_common.a -o myprog
 ```
 
-On Linux add `-pthread -lm`; on macOS and Windows neither is needed. For a
-debug build, use `-B build/debug -DCMAKE_BUILD_TYPE=Debug` instead.
+Keep the archives in that order: each one comes before the ones it depends on,
+which a GNU linker requires. On Linux add `-pthread -lm`; on macOS and Windows
+neither is needed. For a debug build, use
+`-B build/debug -DCMAKE_BUILD_TYPE=Debug` instead.
 
 From CMake, point at the checkout and link the exported target. The include
-directory comes with it:
+directory and the other archives come with it:
 
 ```cmake
 cmake_minimum_required(VERSION 3.20)
@@ -63,8 +70,10 @@ add_executable(myapp main.c)
 target_link_libraries(myapp PRIVATE numstore::numstore)
 ```
 
-`cmake --install build/release --prefix /usr/local` installs the archive and the
-header if you would rather link against a system path.
+`cmake --install build/release --prefix /usr/local` installs the archives, the
+header and a CMake package if you would rather link against a system path. A
+project that uses the installed copy calls `find_package (numstore)` and links
+the same `numstore::numstore` target.
 
 Quick start
 -----------
@@ -90,7 +99,7 @@ main (void)
   }
 
   if (ns_execute (db, NULL, "create prices f64") != 0) {
-    fprintf (stderr, "create failed: %s\n", ns_strerror (db));
+    fprintf (stderr, "create failed: %s\n", ns_strerror (db, false));
     ns_close (db);
     return 1;
   }
@@ -99,7 +108,7 @@ main (void)
   sb_size      wrote
       = ns_write (db, NULL, in, sizeof (in), "insert prices 0 3");
   if (wrote < 0) {
-    fprintf (stderr, "insert failed: %s\n", ns_strerror (db));
+    fprintf (stderr, "insert failed: %s\n", ns_strerror (db, false));
     ns_close (db);
     return 1;
   }
@@ -108,7 +117,7 @@ main (void)
   double  out[8];
   sb_size read = ns_read (db, NULL, out, sizeof (out), "read prices[0:]");
   if (read < 0) {
-    fprintf (stderr, "read failed: %s\n", ns_strerror (db));
+    fprintf (stderr, "read failed: %s\n", ns_strerror (db, false));
     ns_close (db);
     return 1;
   }
@@ -180,22 +189,22 @@ main (void)
   db = ns_open ("errors.db");
 
   if (ns_execute (db, NULL, "not a real query") != 0) {
-    printf ("execute failed: %s\n", ns_strerror (db));
+    printf ("execute failed: %s\n", ns_strerror (db, false));
   }
 
   if (ns_execute (db, NULL, "create bad q99") != 0) {
-    printf ("bad type: %s\n", ns_strerror (db));
+    printf ("bad type: %s\n", ns_strerror (db, false));
   }
 
   ns_execute (db, NULL, "create foo u32");
   if (ns_execute (db, NULL, "insert foo 0 10") != 0) {
-    printf ("wrong entry point: %s\n", ns_strerror (db));
+    printf ("wrong entry point: %s\n", ns_strerror (db, false));
   }
 
   double  dest[4];
   sb_size n = ns_read (db, NULL, dest, sizeof (dest), "get foo");
   if (n < 0) {
-    printf ("read of a get: %s\n", ns_strerror (db));
+    printf ("read of a get: %s\n", ns_strerror (db, false));
   }
 
   return ns_close (db);
@@ -216,8 +225,51 @@ zero the buffer first - the message is copied into it without a terminator.
 
 A failed query leaves no partial work behind - a query is atomic whether or not
 you handed it a transaction - and the handle stays usable afterwards, so you can
-report the error and carry on. Plans report through `ns_plan_strerror (plan)`
-rather than `ns_strerror (db)`.
+report the error and carry on.
+
+### Taking an error
+
+An error stays where it is until you take it. `ns_strerror` returns the message
+of the pending error and clears it, so a second call returns `NULL`. Nothing
+else clears it: a call that succeeds leaves an older error in place, and a call
+that fails replaces it. The habit that keeps this simple is to call
+`ns_strerror` after every call that fails, as the example above does.
+
+That matters most for the one place where `NULL` is not a failure. `get if
+exists` on a variable that isn't there returns `NULL` with no error, and the
+way to tell is that `ns_strerror` is also `NULL` - which only holds if no
+earlier error was left behind.
+
+Every failed call records its error in two places:
+
+* On the **database**. `ns_strerror (db, copy)` takes it. This is the error of
+  the last call to fail on that handle, from any thread.
+* On the **transaction** it ran in, if you passed one. `ns_txn_strerror (db,
+  tx, copy)` takes it. A transaction belongs to one thread, so nobody else can
+  replace this one.
+
+A plan has no error of its own. `ns_plan_strerror (plan, copy)` is
+`ns_strerror` on the database the plan belongs to. `ns_commit` and
+`ns_rollback` end the transaction even when they fail, so their error is on the
+database only.
+
+The `copy` argument decides who owns the string:
+
+* `false` returns a pointer into the database (or the transaction). It is valid
+  until the next failure overwrites it. On a handle that only one thread uses
+  that is fine, and it is what the examples in this document do. It is **not
+  thread safe** on a shared handle: another thread's failure can rewrite the
+  string while you are reading it.
+* `true` returns a new string that is yours. Release it with `free`. If there
+  is no memory for the copy you get `NULL` and the error stays pending.
+
+```c
+if (ns_write (db, tx, src, sizeof (src), "insert foo 0 4") < 0) {
+  char *msg = (char *)ns_txn_strerror (db, tx, true);
+  fprintf (stderr, "insert failed: %s\n", msg != NULL ? msg : "unknown");
+  free (msg);
+}
+```
 
 Transactions
 ------------
@@ -252,9 +304,9 @@ main (void)
   ns_execute (db, NULL, "create prices f64");
 
   // Commit: both inserts land together, or neither does.
-  txn_t *tx = ns_begin (db);
+  nsdb_txn_t *tx = ns_begin (db);
   if (tx == NULL) {
-    fprintf (stderr, "begin failed: %s\n", ns_strerror (db));
+    fprintf (stderr, "begin failed: %s\n", ns_strerror (db, false));
     ns_close (db);
     return 1;
   }
@@ -265,7 +317,7 @@ main (void)
   ns_write (db, tx, second, sizeof (second), "insert prices 2 1");
 
   if (ns_commit (db, tx) != 0) {
-    fprintf (stderr, "commit failed: %s\n", ns_strerror (db));
+    fprintf (stderr, "commit failed: %s\n", ns_strerror (db, false));
     ns_close (db);
     return 1;
   }
@@ -293,7 +345,7 @@ inside txn  : 4 elements, first 99
 after rollback: 1.5 2.25 3.75
 ```
 
-A `txn_t *` is spent once you commit or roll it back - don't reuse it. Finish
+A `nsdb_txn_t *` is spent once you commit or roll it back - don't reuse it. Finish
 every transaction you open: `ns_close` blocks while one is still open, and
 `ns_begin` blocks while another is still open. See
 [Concurrency and threading](#concurrency-and-threading).
@@ -324,7 +376,7 @@ static void
 commit_then_crash (void)
 {
   nsdb_t *db = ns_open (PATH);
-  txn_t  *tx = ns_begin (db);
+  nsdb_txn_t  *tx = ns_begin (db);
   ns_write (db, tx, "BB", 2, "insert log 3 2");
   ns_commit (db, tx);
   _Exit (1); // no ns_close
@@ -335,7 +387,7 @@ static void
 crash_without_commit (void)
 {
   nsdb_t *db = ns_open (PATH);
-  txn_t  *tx = ns_begin (db);
+  nsdb_txn_t  *tx = ns_begin (db);
   ns_write (db, tx, "CC", 2, "insert log 7 2");
   _Exit (1); // no ns_commit, no ns_close
 }
@@ -475,7 +527,7 @@ main (void)
   b_size    nbytes = 0;
   uint32_t *data = ns_malloc (db, NULL, &nbytes, "read r[0:6:2]");
   if (data == NULL) {
-    fprintf (stderr, "read failed: %s\n", ns_strerror (db));
+    fprintf (stderr, "read failed: %s\n", ns_strerror (db, false));
     ns_close (db);
     return 1;
   }
@@ -540,7 +592,7 @@ main (void)
   if (ns_execute (
           db, NULL, "create frames struct { timestamp u64, pixels [4][4] u8 }"
       ) != 0) {
-    fprintf (stderr, "create failed: %s\n", ns_strerror (db));
+    fprintf (stderr, "create failed: %s\n", ns_strerror (db, false));
     ns_close (db);
     return 1;
   }
@@ -640,7 +692,7 @@ main (void)
   // One variable at a time.
   nsdb_var_t *var = ns_get_var (db, NULL, "get v1");
   if (var == NULL) {
-    fprintf (stderr, "get failed: %s\n", ns_strerror (db));
+    fprintf (stderr, "get failed: %s\n", ns_strerror (db, false));
     ns_close (db);
     return 1;
   }
@@ -655,7 +707,7 @@ main (void)
   // Every variable in the database.
   struct total t = {0};
   if (ns_visit_nsdb_vars (db, tally, NULL, &t) != 0) {
-    fprintf (stderr, "visit failed: %s\n", ns_strerror (db));
+    fprintf (stderr, "visit failed: %s\n", ns_strerror (db, false));
     ns_close (db);
     return 1;
   }
@@ -709,7 +761,7 @@ main (void)
   // Compile once.
   nsdb_plan_t *append = ns_plan_fcreate (db, "insert samples 0 4");
   if (append == NULL) {
-    fprintf (stderr, "plan failed: %s\n", ns_strerror (db));
+    fprintf (stderr, "plan failed: %s\n", ns_strerror (db, false));
     ns_close (db);
     return 1;
   }
@@ -719,7 +771,7 @@ main (void)
     const uint32_t src[] = {1, 2, 3, 4};
     sb_size        n = ns_plan_write (append, NULL, src, sizeof (src));
     if (n < 0) {
-      fprintf (stderr, "write failed: %s\n", ns_plan_strerror (append));
+      fprintf (stderr, "write failed: %s\n", ns_plan_strerror (append, false));
       ns_plan_free (append);
       ns_close (db);
       return 1;
@@ -913,58 +965,63 @@ Function reference
 
 ### Queries
 
-| Function                                                                                       | Returns                            | Notes                                                                 |
-| ---------------------------------------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------- |
-| `int ns_execute (nsdb_t *db, txn_t *tx, const char *fmt, ...)`                                 | `0` on success                     | `CREATE` `DELETE` `REMOVE`                                            |
-| `sb_size ns_read (nsdb_t *db, txn_t *tx, void *dest, b_size dlen, const char *fmt, ...)`       | elements read, `< 0` on failure    | `READ` `REMOVE`; `dlen` is bytes                                      |
-| `sb_size ns_write (nsdb_t *db, txn_t *tx, const void *src, b_size slen, const char *fmt, ...)` | elements written, `< 0` on failure | `INSERT` `WRITE`; `slen` is bytes                                     |
-| `void *ns_malloc (nsdb_t *db, txn_t *tx, b_size *dlen, const char *fmt, ...)`                  | buffer, `NULL` on failure          | `READ` `REMOVE`; writes the byte count to `dlen`; release with `free` |
-| `nsdb_var_t *ns_get_var (nsdb_t *db, txn_t *tx, const char *query, ...)`                       | handle, `NULL` on failure          | any query naming a variable; the query never runs                     |
+| Function                                                                                            | Returns                            | Notes                                                                 |
+| --------------------------------------------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------- |
+| `int ns_execute (nsdb_t *db, nsdb_txn_t *tx, const char *fmt, ...)`                                 | `0` on success                     | `CREATE` `DELETE` `REMOVE`                                            |
+| `sb_size ns_read (nsdb_t *db, nsdb_txn_t *tx, void *dest, b_size dlen, const char *fmt, ...)`       | elements read, `< 0` on failure    | `READ` `REMOVE`; `dlen` is bytes                                      |
+| `sb_size ns_write (nsdb_t *db, nsdb_txn_t *tx, const void *src, b_size slen, const char *fmt, ...)` | elements written, `< 0` on failure | `INSERT` `WRITE`; `slen` is bytes                                     |
+| `void *ns_malloc (nsdb_t *db, nsdb_txn_t *tx, b_size *dlen, const char *fmt, ...)`                  | buffer, `NULL` on failure          | `READ` `REMOVE`; writes the byte count to `dlen`; release with `free` |
+| `nsdb_var_t *ns_get_var (nsdb_t *db, nsdb_txn_t *tx, const char *query, ...)`                       | handle, `NULL` on failure          | any query naming a variable; the query never runs                     |
 
 ### Transactions
 
-| Function                                   | Returns                   | Notes                                      |
-| ------------------------------------------ | ------------------------- | ------------------------------------------ |
-| `txn_t *ns_begin (nsdb_t *ns)`             | handle, `NULL` on failure | blocks while another transaction is open   |
-| `int ns_commit (nsdb_t *ns, txn_t *txn)`   | `0` on success            | durable when it returns; spends the handle |
-| `int ns_rollback (nsdb_t *ns, txn_t *txn)` | `0` on success            | undoes everything; spends the handle       |
+| Function                                        | Returns                   | Notes                                      |
+| ----------------------------------------------- | ------------------------- | ------------------------------------------ |
+| `nsdb_txn_t *ns_begin (nsdb_t *ns)`             | handle, `NULL` on failure | blocks while another transaction is open   |
+| `int ns_commit (nsdb_t *ns, nsdb_txn_t *txn)`   | `0` on success            | durable when it returns; spends the handle |
+| `int ns_rollback (nsdb_t *ns, nsdb_txn_t *txn)` | `0` on success            | undoes everything; spends the handle       |
 
 ### Variables
 
-| Function                                                                                | Returns        | Notes                                                                                       |
-| --------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------- |
-| `b_size ns_var_len (nsdb_var_t *var)`                                                   | elements       | length when the handle was taken                                                            |
-| `void ns_var_free (nsdb_var_t *var)`                                                    |                | frees a handle from `ns_get_var`; may run after `ns_close`                                  |
-| `int ns_visit_nsdb_vars (nsdb_t *db, nsdb_var_consumer consumer, txn_t *tx, void *ctx)` | `0` on success | calls `consumer (var, ctx)` per variable; the callback must not free `var`; `tx` is ignored |
+| Function                                                                                     | Returns        | Notes                                                                                       |
+| -------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------- |
+| `b_size ns_var_len (nsdb_var_t *var)`                                                        | elements       | length when the handle was taken                                                            |
+| `void ns_var_free (nsdb_var_t *var)`                                                         |                | frees a handle from `ns_get_var`; may run after `ns_close`                                  |
+| `int ns_visit_nsdb_vars (nsdb_t *db, nsdb_var_consumer consumer, nsdb_txn_t *tx, void *ctx)` | `0` on success | calls `consumer (var, ctx)` per variable; the callback must not free `var`; `tx` is ignored |
 
 ### Plans
 
-| Function                                                                             | Returns                            | Notes                            |
-| ------------------------------------------------------------------------------------ | ---------------------------------- | -------------------------------- |
-| `nsdb_plan_t *ns_plan_fcreate (nsdb_t *db, const char *fmt, ...)`                    | plan, `NULL` on failure            | compiles a query                 |
-| `void ns_plan_free (nsdb_plan_t *plan)`                                              |                                    | free before closing the database |
-| `int ns_plan_execute (nsdb_plan_t *plan, txn_t *tx)`                                 | `0` on success                     |                                  |
-| `sb_size ns_plan_read (nsdb_plan_t *plan, txn_t *tx, void *dest, b_size dlen)`       | elements read, `< 0` on failure    |                                  |
-| `sb_size ns_plan_write (nsdb_plan_t *plan, txn_t *tx, const void *src, b_size slen)` | elements written, `< 0` on failure |                                  |
-| `void *ns_plan_malloc (nsdb_plan_t *plan, txn_t *tx, b_size *dlen)`                  | buffer, `NULL` on failure          | release with `free`              |
-| `nsdb_var_t *ns_plan_get_var (nsdb_plan_t *plan, txn_t *tx)`                         | handle, `NULL` on failure          | free with `ns_var_free`          |
+| Function                                                                                  | Returns                            | Notes                            |
+| ----------------------------------------------------------------------------------------- | ---------------------------------- | -------------------------------- |
+| `nsdb_plan_t *ns_plan_fcreate (nsdb_t *db, const char *fmt, ...)`                         | plan, `NULL` on failure            | compiles a query                 |
+| `void ns_plan_free (nsdb_plan_t *plan)`                                                   |                                    | free before closing the database |
+| `int ns_plan_execute (nsdb_plan_t *plan, nsdb_txn_t *tx)`                                 | `0` on success                     |                                  |
+| `sb_size ns_plan_read (nsdb_plan_t *plan, nsdb_txn_t *tx, void *dest, b_size dlen)`       | elements read, `< 0` on failure    |                                  |
+| `sb_size ns_plan_write (nsdb_plan_t *plan, nsdb_txn_t *tx, const void *src, b_size slen)` | elements written, `< 0` on failure |                                  |
+| `void *ns_plan_malloc (nsdb_plan_t *plan, nsdb_txn_t *tx, b_size *dlen)`                  | buffer, `NULL` on failure          | release with `free`              |
+| `nsdb_var_t *ns_plan_get_var (nsdb_plan_t *plan, nsdb_txn_t *tx)`                         | handle, `NULL` on failure          | free with `ns_var_free`          |
 
 ### Errors
 
-| Function                                           | Returns | Notes                                     |
-| -------------------------------------------------- | ------- | ----------------------------------------- |
-| `const char *ns_strerror (nsdb_t *ns)`             | message | describes the last failure on this handle |
-| `const char *ns_plan_strerror (nsdb_plan_t *plan)` | message | describes the last failure on this plan   |
+| Function                                                               | Returns                 | Notes                                                  |
+| ---------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------ |
+| `const char *ns_strerror (nsdb_t *ns, bool copy)`                      | message, `NULL` if none | takes the last failure on this handle, from any thread |
+| `const char *ns_plan_strerror (nsdb_plan_t *plan, bool copy)`          | message, `NULL` if none | the same as `ns_strerror` on the plan's handle         |
+| `const char *ns_txn_strerror (nsdb_t *ns, nsdb_txn_t *txn, bool copy)` | message, `NULL` if none | takes the last failure inside this transaction         |
+
+Each call clears the error it returns. With `copy` set the message is a new
+string to release with `free`; without it the pointer is only good until the
+next failure, and is not safe on a handle that other threads use.
 
 ### Smart files
 
-| Function                                                                                                                      | Returns                            | Notes                                                          |
-| ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------- |
-| `sb_size ns_smfile_size (nsdb_t *smf, txn_t *tx)`                                                                             | bytes                              | size under `tx`'s view                                         |
-| `sb_size ns_smfile_insert (nsdb_t *smf, txn_t *tx, const void *src, sb_size bofst, b_size slen)`                              | bytes inserted, `< 0` on failure   | pushes `slen` bytes in at byte offset `bofst`                  |
-| `sb_size ns_smfile_write (nsdb_t *smf, txn_t *tx, const void *src, t_size size, sb_size bofst, sb_size stride, b_size nelem)` | elements written, `< 0` on failure | overwrites `nelem` elements of `size` bytes, stepping `stride` |
-| `sb_size ns_smfile_read (nsdb_t *smf, txn_t *tx, void *dest, t_size size, sb_size bofst, sb_size stride, b_size nelem)`       | elements read, `< 0` on failure    | same addressing, reading                                       |
-| `sb_size ns_smfile_remove (nsdb_t *smf, txn_t *tx, void *dest, t_size size, sb_size bofst, sb_size stride, b_size nelem)`     | elements removed, `< 0` on failure | removes and optionally hands the bytes back in `dest`          |
+| Function                                                                                                                           | Returns                            | Notes                                                          |
+| ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------- |
+| `sb_size ns_smfile_size (nsdb_t *smf, nsdb_txn_t *tx)`                                                                             | bytes                              | size under `tx`'s view                                         |
+| `sb_size ns_smfile_insert (nsdb_t *smf, nsdb_txn_t *tx, const void *src, sb_size bofst, b_size slen)`                              | bytes inserted, `< 0` on failure   | pushes `slen` bytes in at byte offset `bofst`                  |
+| `sb_size ns_smfile_write (nsdb_t *smf, nsdb_txn_t *tx, const void *src, t_size size, sb_size bofst, sb_size stride, b_size nelem)` | elements written, `< 0` on failure | overwrites `nelem` elements of `size` bytes, stepping `stride` |
+| `sb_size ns_smfile_read (nsdb_t *smf, nsdb_txn_t *tx, void *dest, t_size size, sb_size bofst, sb_size stride, b_size nelem)`       | elements read, `< 0` on failure    | same addressing, reading                                       |
+| `sb_size ns_smfile_remove (nsdb_t *smf, nsdb_txn_t *tx, void *dest, t_size size, sb_size bofst, sb_size stride, b_size nelem)`     | elements removed, `< 0` on failure | removes and optionally hands the bytes back in `dest`          |
 
 Types and constants
 -------------------
@@ -972,7 +1029,7 @@ Types and constants
 | Name                | Underlying                        | What it is                                                                                         |
 | ------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------- |
 | `nsdb_t`            | opaque                            | a database or smart file handle                                                                    |
-| `txn_t`             | opaque                            | a transaction                                                                                      |
+| `nsdb_txn_t`        | opaque                            | a transaction                                                                                      |
 | `nsdb_var_t`        | opaque                            | a variable metadata handle                                                                         |
 | `nsdb_plan_t`       | opaque                            | a compiled query                                                                                   |
 | `t_size`            | `uint32_t`                        | the size of one type, in bytes                                                                     |

@@ -130,7 +130,7 @@ class TestQuery:
         db.write(f"insert foo 0 {src.size}", src)
 
         dest = np.zeros(5, dtype=np.uint32)
-        n = db.read_into(f"read foo[0:] blimit {dest.nbytes}", dest)
+        n = db.read_into("read foo[0:]", dest)
 
         assert n == dest.size
         np.testing.assert_array_equal(dest, src)
@@ -168,15 +168,15 @@ class TestQuery:
         db.write(f"insert foo 0 {src.size}", src)
 
         dest = np.zeros(3, dtype=np.uint32)
-        assert db.read_into(f"read foo[0:] blimit {dest.nbytes}", dest) == 3
+        assert db.read_into("read foo[0:]", dest) == 3
 
-    def test_read_into_is_bounded_by_the_buffer_without_blimit(self, db):
+    def test_read_into_is_bounded_by_the_buffer(self, db):
         db.execute("create foo u32")
         src = np.arange(10, dtype=np.uint32)
         db.write(f"insert foo 0 {src.size}", src)
 
         dest = np.zeros(4, dtype=np.uint32)
-        # no blimit, so read_into cannot write past the buffer it was given
+        # read_into cannot write past the buffer it was given
         assert db.read_into("read foo[0:]", dest) == dest.size
         np.testing.assert_array_equal(dest, src[:4])
 
@@ -788,57 +788,24 @@ class TestQuerySyntaxEdges:
 
         assert db.get("get foo").name == "foo"
 
-    @pytest.mark.xfail(
-        reason="the parser stops once it has a complete statement and silently "
-        "drops whatever follows, so typos in a suffix clause are never reported. "
-        "This is the root cause of the blimit group below.",
-        strict=True,
-    )
     def test_trailing_junk_is_rejected(self, db):
+        """One query is the whole input - text after it is a syntax error."""
         with pytest.raises(RuntimeError):
             db.execute("create foo u32 and then some")
 
-    ############# blimit
-    #
-    # `blimit N` is documented (docs/index.md) and used in 14 places in this
-    # suite, but it is not implemented: "blimit" is not a keyword in
-    # check_keyword (src/nscore/compiler/ns_lexer.c), so `read foo[0:] blimit 8`
-    # parses as `read foo[0:]` plus trailing junk that the parser drops. Even
-    # `blimit notanumber` and `blimit -4` are accepted.
-    #
-    # Every existing test that passes a blimit still passes with it deleted --
-    # the buffer length is what actually bounds read_into. These three pin the
-    # clause down so that implementing it turns the xfails green.
-    @pytest.mark.xfail(
-        reason="blimit is not implemented; the clause is parsed as trailing "
-        "junk and dropped, so the read is bounded only by the buffer.",
-        strict=True,
-    )
-    def test_blimit_caps_the_read(self, foo):
-        out = np.zeros(6, dtype=np.uint32)
+    def test_trailing_junk_does_not_run_the_query_before_it(self, db):
+        db.execute("create foo u32")
 
-        # room for two u32s, so two elements come back
-        assert foo.read_into("read foo[0:] blimit 8", out) == 2
-        np.testing.assert_array_equal(out[:2], [0, 1])
+        with pytest.raises(RuntimeError):
+            db.execute("delete foo bar")
 
-    @pytest.mark.xfail(
-        reason="blimit is not implemented; see test_blimit_caps_the_read.",
-        strict=True,
-    )
-    def test_a_blimit_that_is_not_a_multiple_of_the_element_size_truncates(self, foo):
-        out = np.zeros(6, dtype=np.uint32)
+        assert db.get("get foo").name == "foo"
 
-        # 10 bytes is two whole u32s and half of a third
-        assert foo.read_into("read foo[0:] blimit 10", out) == 2
+    def test_a_suffix_clause_that_does_not_exist_is_rejected(self, db):
+        db.execute("create foo u32")
 
-    @pytest.mark.parametrize(
-        "clause", ["blimit 1024", "blimit notanumber", "blimit -4"]
-    )
-    def test_a_blimit_never_widens_the_read_past_the_buffer(self, foo, clause):
-        """Passes today only because the clause is ignored outright."""
-        out = np.zeros(3, dtype=np.uint32)
-
-        assert foo.read_into(f"read foo[0:] {clause}", out) == 3
+        with pytest.raises(RuntimeError):
+            db.read_into("read foo[0:] blimit 8", np.zeros(2, dtype=np.uint32))
 
     ############# Names
     def test_a_long_variable_name(self, db):
@@ -860,7 +827,7 @@ class TestDeleteVerb:
     """`delete [if exists] <name>` and `get if exists <name>`.
 
     Both are in the grammar (parse_query_delete / parse_query_get in
-    src/nscore/compiler/parsers/ns_parse_query.c) and neither had a Python
+    libs/nslang/parsers/ns_parse_query.c) and neither had a Python
     test before this file.
     """
 
@@ -977,4 +944,14 @@ class TestDeleteVerb:
 
     def test_get_if_exists_on_a_missing_variable_returns_none(self, db):
         """The point of `if exists` is to ask without it being an error."""
+        assert db.get("get if exists nope") is None
+
+    def test_get_if_exists_after_a_failed_query_returns_none(self, db):
+        """A failed call's error is raised once. It doesn't come back as the
+        error of a later call."""
+        with pytest.raises(RuntimeError):
+            db.execute("this is not a query")
+        with pytest.raises(RuntimeError):
+            db.read("read nope")
+
         assert db.get("get if exists nope") is None

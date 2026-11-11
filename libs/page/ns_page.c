@@ -1,0 +1,365 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+
+#include "ns_page.h"
+
+#include "ns_logging.h"
+#include "ns_page_data_list.h"
+#include "ns_page_fsm.h"
+#include "ns_page_inner_node.h"
+#include "ns_page_var_hash_page.h"
+#include "ns_page_var_page.h"
+#include "ns_page_var_tail.h"
+#include "ns_testing.h"
+
+/******************************************************************************
+ * SECTION: Page Common
+ ******************************************************************************/
+
+void
+page_init_empty (page *p, const enum page_type type)
+{
+  DBG_ASSERT (page_base, p);
+
+  page_set_type (p, type);
+  page_set_page_lsn (p, LSN_NULL);
+  page_set_checksum (p, 0);
+
+  switch (type) {
+    case PG_DATA_LIST: {
+      dl_init_empty (p);
+      return;
+    }
+    case PG_INNER_NODE: {
+      in_init_empty (p);
+      return;
+    }
+    case PG_FREE_SPACE_MAP: {
+      fsm_init_empty (p);
+      return;
+    }
+    case PG_VAR_PAGE: {
+      vp_init_empty (p);
+      return;
+    }
+    case PG_VAR_TAIL: {
+      vt_init_empty (p);
+      return;
+    }
+    case PG_VAR_HASH_PAGE: {
+      vh_init_empty (p);
+      return;
+    }
+  }
+  UNREACHABLE (); // LCOV_EXCL_LINE
+}
+
+err_t
+page_validate_for_db (const page *p, const int flags, error *e)
+{
+  DBG_ASSERT (page_base, p);
+
+  if (flags & PG_PERMISSIVE) {
+    return SUCCESS;
+  }
+
+  const pgh header = page_get_type (p);
+
+  if (!(header & flags)) {
+    return error_causef (
+        e,
+        ERR_CORRUPT,
+        "expected page type %s, got %s",
+        page_type_str_from_flags (flags),
+        page_type_str_from_flags (header)
+    );
+  }
+
+  if (!(flags & PG_SKIP_CHECKSUM)) {
+    const u32 actual_checksum   = page_get_checksum (p);
+    const u32 expected_checksum = page_compute_checksum (p);
+
+    if (actual_checksum != expected_checksum) {
+      return error_causef (
+          e,
+          ERR_CORRUPT,
+          "Corrupt page. Expected checksum: "
+          "%" PRIu32 " Actual Checksum: %" PRIu32,
+          expected_checksum,
+          actual_checksum
+      );
+    }
+  }
+
+  if (header == PG_TRASH) {
+    return SUCCESS;
+  }
+
+  switch ((enum page_type)header) {
+    case PG_DATA_LIST: {
+      return dl_validate_for_db (p, e);
+    }
+    case PG_INNER_NODE: {
+      return in_validate_for_db (p, e);
+    }
+    case PG_FREE_SPACE_MAP: {
+      return fsm_validate_for_db (p, e);
+    }
+    case PG_VAR_PAGE: {
+      return vp_validate_for_db (p, e);
+    }
+    case PG_VAR_TAIL: {
+      return vt_validate_for_db (p, e);
+    }
+    case PG_VAR_HASH_PAGE: {
+      return vh_validate_for_db (p, e);
+    }
+  }
+
+  UNREACHABLE (); // LCOV_EXCL_LINE
+}
+
+#ifndef NDEBUG
+TEST (page_set_get_simple)
+{
+  page p;
+  page q;
+  rand_bytes (p.raw, NS_PAGE_SIZE);
+  rand_bytes (q.raw, NS_PAGE_SIZE);
+
+  TEST_CASE ("Initialization: each page type")
+  {
+    page_init_empty (&p, PG_DATA_LIST);
+    test_assert_int_equal (page_get_type (&p), PG_DATA_LIST);
+
+    page_init_empty (&p, PG_INNER_NODE);
+    test_assert_int_equal (page_get_type (&p), PG_INNER_NODE);
+
+    page_init_empty (&p, PG_FREE_SPACE_MAP);
+    test_assert_int_equal (page_get_type (&p), PG_FREE_SPACE_MAP);
+  }
+
+  TEST_CASE ("Setters / Getters: checksum + page_lsn + type")
+  {
+    page_init_empty (&p, PG_DATA_LIST);
+
+    page_set_checksum (&p, 0xDEADBEEF);
+    test_assert_type_equal (page_get_checksum (&p), 0xDEADBEEFU, u32, PRIu32);
+
+    page_set_page_lsn (&p, 1234);
+    test_assert_type_equal (page_get_page_lsn (&p), 1234, lsn, PRlsn);
+
+    page_set_type (&p, PG_INNER_NODE);
+    test_assert_int_equal (page_get_type (&p), PG_INNER_NODE);
+  }
+
+  TEST_CASE ("page_memcpy roundtrip")
+  {
+    const struct bytes src = {.head = q.raw, .len = NS_PAGE_SIZE};
+    page_memcpy (&p, src);
+    test_assert_memequal (p.raw, q.raw, NS_PAGE_SIZE);
+  }
+}
+#endif
+
+#ifndef NDEBUG
+TEST (page_validate_for_db_flags)
+{
+  page p;
+  rand_bytes (p.raw, NS_PAGE_SIZE);
+
+  TEST_CASE ("A valid page with a matching checksum passes")
+  {
+    page_init_empty (&p, PG_FREE_SPACE_MAP);
+    page_set_checksum (&p, page_compute_checksum (&p));
+    test_err_t_check (page_validate_for_db (&p, PG_FREE_SPACE_MAP, &ctx->e), SUCCESS, &ctx->e);
+  }
+
+  TEST_CASE ("The wrong page type is corrupt")
+  {
+    page_init_empty (&p, PG_FREE_SPACE_MAP);
+    page_set_checksum (&p, page_compute_checksum (&p));
+    test_err_t_check (page_validate_for_db (&p, PG_INNER_NODE, &ctx->e), ERR_CORRUPT, &ctx->e);
+  }
+
+  TEST_CASE ("A bad checksum is corrupt unless skipped")
+  {
+    page_init_empty (&p, PG_FREE_SPACE_MAP);
+    page_set_checksum (&p, page_compute_checksum (&p) + 1);
+    test_err_t_check (page_validate_for_db (&p, PG_FREE_SPACE_MAP, &ctx->e), ERR_CORRUPT, &ctx->e);
+    test_err_t_check (
+        page_validate_for_db (&p, PG_FREE_SPACE_MAP | PG_SKIP_CHECKSUM, &ctx->e),
+        SUCCESS,
+        &ctx->e
+    );
+  }
+
+  TEST_CASE ("PG_PERMISSIVE accepts anything")
+  {
+    rand_bytes (p.raw, NS_PAGE_SIZE);
+    test_err_t_check (page_validate_for_db (&p, PG_PERMISSIVE, &ctx->e), SUCCESS, &ctx->e);
+  }
+
+  TEST_CASE ("A PG_TRASH frame matches every type and skips the type check")
+  {
+    pgh trash = PG_TRASH;
+    memcpy (&p.raw[PG_HEDR_OFST], &trash, sizeof trash);
+    test_err_t_check (
+        page_validate_for_db (&p, PG_INNER_NODE | PG_SKIP_CHECKSUM, &ctx->e),
+        SUCCESS,
+        &ctx->e
+    );
+  }
+}
+#endif
+
+void
+i_log_page (const int log_level, const page *p)
+{
+  DBG_ASSERT (page_base, p);
+
+  switch ((enum page_type)page_get_type (p)) {
+    case PG_DATA_LIST: {
+      i_log_dl (log_level, p);
+      return;
+    }
+    case PG_INNER_NODE: {
+      i_log_in (log_level, p);
+      return;
+    }
+    case PG_FREE_SPACE_MAP: {
+      i_log_fsm (log_level, p);
+      return;
+    }
+    case PG_VAR_PAGE: {
+      i_log_vp (log_level, p);
+      return;
+    }
+    case PG_VAR_TAIL: {
+      i_log_vt (log_level, p);
+      return;
+    }
+    case PG_VAR_HASH_PAGE: {
+      i_log_vh (log_level, p);
+      return;
+    }
+  }
+}
+
+#ifndef NDEBUG
+TEST (i_log_page)
+{
+  page pg;
+  pg.pg = 10;
+
+  page_init_empty (&pg, PG_DATA_LIST);
+  i_log_page (LOG_INFO, &pg);
+
+  page_init_empty (&pg, PG_INNER_NODE);
+  i_log_page (LOG_INFO, &pg);
+
+  page_init_empty (&pg, PG_FREE_SPACE_MAP);
+  i_log_page (LOG_INFO, &pg);
+
+  page_init_empty (&pg, PG_VAR_PAGE);
+  i_log_page (LOG_INFO, &pg);
+
+  page_init_empty (&pg, PG_VAR_TAIL);
+  i_log_page (LOG_INFO, &pg);
+
+  page_init_empty (&pg, PG_VAR_HASH_PAGE);
+  i_log_page (LOG_INFO, &pg);
+}
+
+/******************************************************************************
+ * SECTION: Page Type Flags (tests)
+ ******************************************************************************/
+
+static const struct
+{
+  enum page_type type;
+  const char    *str;
+} page_type_cases[] = {
+    {PG_FREE_SPACE_MAP, "PG_FREE_SPACE_MAP"},
+    {PG_DATA_LIST, "PG_DATA_LIST"},
+    {PG_INNER_NODE, "PG_INNER_NODE"},
+    {PG_VAR_HASH_PAGE, "PG_VAR_HASH_PAGE"},
+    {PG_VAR_PAGE, "PG_VAR_PAGE"},
+    {PG_VAR_TAIL, "PG_VAR_TAIL"},
+};
+
+TEST (flags_to_page_type_every_type)
+{
+  for (u32 i = 0; i < arrlen (page_type_cases); ++i) {
+    TEST_CASE ("%s", page_type_cases[i].str)
+    {
+      const enum page_type type = page_type_cases[i].type;
+
+      test_assert_int_equal (flags_to_page_type (type), type);
+      test_assert (strcmp (page_type_str_from_flags (type), page_type_cases[i].str) == 0);
+
+      test_assert_int_equal (flags_to_page_type (type | PG_PERMISSIVE), type);
+      test_assert_int_equal (flags_to_page_type (type | PG_SKIP_CHECKSUM), type);
+      test_assert_int_equal (flags_to_page_type (type | PG_PERMISSIVE | PG_SKIP_CHECKSUM), type);
+      test_assert (
+          strcmp (
+              page_type_str_from_flags (type | PG_PERMISSIVE | PG_SKIP_CHECKSUM),
+              page_type_cases[i].str
+          )
+          == 0
+      );
+    }
+  }
+}
+
+TEST (flags_to_page_type_non_types)
+{
+  TEST_CASE ("No bits set decodes to no type and prints UNKNOWN")
+  {
+    test_assert_int_equal (flags_to_page_type (0), 0);
+    test_assert (strcmp (page_type_str_from_flags (0), "UNKNOWN") == 0);
+  }
+
+  TEST_CASE ("Bit 1 is unallocated, so it is not a known type")
+  {
+    test_assert_int_equal (flags_to_page_type (1 << 1), 1 << 1);
+    test_assert (strcmp (page_type_str_from_flags (1 << 1), "UNKNOWN") == 0);
+  }
+
+  TEST_CASE ("Two type bits at once is not a single type")
+  {
+    const int both = PG_DATA_LIST | PG_INNER_NODE;
+    test_assert_int_equal (flags_to_page_type (both), both);
+    test_assert (strcmp (page_type_str_from_flags (both), "UNKNOWN") == 0);
+  }
+
+  TEST_CASE ("Modifier bits alone carry no type")
+  {
+    test_assert_int_equal (flags_to_page_type (PG_PERMISSIVE), 0);
+    test_assert_int_equal (flags_to_page_type (PG_SKIP_CHECKSUM), 0);
+    test_assert (strcmp (page_type_str_from_flags (PG_PERMISSIVE), "UNKNOWN") == 0);
+  }
+
+  TEST_CASE ("PG_TRASH is a sentinel, not a page type")
+  {
+    test_assert (strcmp (page_type_str_from_flags (PG_TRASH), "UNKNOWN") == 0);
+  }
+
+  TEST_CASE ("Bits above the mask are discarded")
+  {
+    test_assert_int_equal (flags_to_page_type (PG_VAR_TAIL << 1), 0);
+    test_assert_int_equal (flags_to_page_type (1 << 20), 0);
+  }
+}
+#endif

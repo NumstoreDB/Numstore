@@ -1569,7 +1569,7 @@ Where to next
 
 * [**Python API Reference**](python_api.md) - `Database`, `Transaction`, `Plan`,
   `Var` and `to_dtype`, with every signature, return value and error.
-* [**C API Reference**](c_api.md) - link `libnumstore.a`, then a complete C
+* [**C API Reference**](c_api.md) - build and link, then a complete C
   program per operation: queries, transactions, crash recovery, packed structs,
   prepared plans and smart files.
 * [**samples/**](../samples) - the same material as scripts you can run:

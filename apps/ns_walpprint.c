@@ -12,9 +12,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/os/ns_malloc.h"
-#include "core/os/ns_os.h"
-#include "nscore/wal/ns_wal.h"
+#include "os/ns_malloc.h"
+#include "os/ns_os.h"
+#include "wal/ns_wal.h"
 
 #include <stdio.h>
 #include <stdlib.h>

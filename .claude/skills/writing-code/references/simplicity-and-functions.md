@@ -99,7 +99,7 @@ commit:
 If you didn't know what a commit means, this would be a horrible local
 function. But commit is a defined part of the system, so it's right: the body
 is the definition. The real one is `pgr_commit` in
-`libs/numstore/src/nscore/pager/ns_pgr_commit.c`.
+`libs/nscore/pager/ns_pgr_commit.c`.
 
 ### Checklist before extracting
 

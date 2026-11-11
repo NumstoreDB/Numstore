@@ -132,7 +132,7 @@ run_phase (int phase_num, int crash, const char *exe)
 static void
 phase1_populate (nsdb_t *smf)
 {
-  txn_t *tx = ns_begin (smf);
+  nsdb_txn_t *tx = ns_begin (smf);
   ns_smfile_insert (smf, tx, "AAAAAAAAAA", 0, 10);
   ns_commit (smf, tx);
 }
@@ -150,7 +150,7 @@ phase1_populate (nsdb_t *smf)
 static void
 phase2_commit_clean (nsdb_t *smf)
 {
-  txn_t *tx = ns_begin (smf);
+  nsdb_txn_t *tx = ns_begin (smf);
   ns_smfile_insert (smf, tx, "BB", 3, 2);
   ns_commit (smf, tx);
 }
@@ -169,7 +169,7 @@ phase2_commit_clean (nsdb_t *smf)
 static void
 phase3_commit_then_crash (nsdb_t *smf)
 {
-  txn_t *tx = ns_begin (smf);
+  nsdb_txn_t *tx = ns_begin (smf);
   ns_smfile_insert (smf, tx, "CC", 7, 2);
   ns_commit (smf, tx);
   // _Exit() called by run_phase - crash happens here
@@ -189,7 +189,7 @@ phase3_commit_then_crash (nsdb_t *smf)
 static void
 phase4_no_commit_crash (nsdb_t *smf)
 {
-  txn_t *tx = ns_begin (smf);
+  nsdb_txn_t *tx = ns_begin (smf);
   ns_smfile_insert (smf, tx, "DD", 11, 2);
   // No smfile_commit() - _Exit() called by run_phase
 }
@@ -208,7 +208,7 @@ phase4_no_commit_crash (nsdb_t *smf)
 static void
 phase5_rollback (nsdb_t *smf)
 {
-  txn_t *tx = ns_begin (smf);
+  nsdb_txn_t *tx = ns_begin (smf);
   ns_smfile_insert (smf, tx, "EE", 5, 2);
   ns_rollback (smf, tx);
 }

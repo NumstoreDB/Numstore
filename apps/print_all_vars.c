@@ -12,10 +12,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "core/ns_error.h"
-#include "core/ns_string.h"
-#include "nscore/algorithms/var/ns_var_algorithms.h"
-#include "nscore/variables/ns_variables.h"
+#include "ns_error.h"
+#include "ns_string.h"
+#include "types/ns_variables.h"
+#include "var/ns_var_algorithms.h"
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -48,7 +48,7 @@ Good comments
 Naming the steps of a well known protocol
 -----------------------------------------
 
-`libs/numstore/src/nscore/pager/ns_pgr_commit.c`, `pgr_commit`:
+`libs/nscore/pager/ns_pgr_commit.c`, `pgr_commit`:
 
 ```c
   // COMMIT
@@ -75,7 +75,7 @@ function would.
 Explaining code that looks wrong
 --------------------------------
 
-`libs/numstore/src/core/os/posix/ns_posix.c`, `sys_prealloc`:
+`libs/common/os/posix/ns_posix.c`, `sys_prealloc`:
 
 ```c
   // macOS has no posix_fallocate. F_PREALLOCATE reserves blocks but leaves
@@ -90,7 +90,7 @@ could delete. The comment says it's what stops the file from shrinking.
 Showing the arithmetic is safe
 ------------------------------
 
-`libs/numstore/src/core/os/windows/ns_windows.c`:
+`libs/common/os/windows/ns_windows.c`:
 
 ```c
   // Split into whole seconds + remainder so elapsed * 1e9 can't overflow.
@@ -118,7 +118,7 @@ says where the matching free is.
 Why a design choice was made
 ----------------------------
 
-`libs/numstore/src/core/os/faulty/ns_faulty_os.c`:
+`libs/common/os/faulty/ns_faulty_os.c`:
 
 ```c
 // The i_mem counterpart of the faulty OS
@@ -132,7 +132,7 @@ anyone asks it.
 Recording a bug fix
 -------------------
 
-`libs/numstore/src/core/ns_gr_lock.c`, above `gr_lock_is_x_blocks`:
+`libs/common/ns_gr_lock.c`, above `gr_lock_is_x_blocks`:
 
 ```c
 // This used to sleep 50ms and then sample "is thread 2 still blocked?", which
@@ -144,7 +144,7 @@ Recording a bug fix
 It records what the old version did, how it failed, and why the new one can't
 fail the same way. That stops someone from putting the sleep back.
 
-`libs/numstore/src/nscore/testing/regressions/0002_create_crash_close_delete.c`:
+`libs/numstore/tests/regressions/0002_create_crash_close_delete.c`:
 
 ```c
   // Delete the variable
@@ -163,7 +163,7 @@ The `CAUSE:` sits on the exact step that used to fail.
 Why a test exists
 -----------------
 
-`libs/numstore/src/core/ns_crc.c`:
+`libs/common/ns_crc.c`:
 
 ```c
 // Splitting a buffer anywhere must not change the result, which is what lets

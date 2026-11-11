@@ -33,7 +33,7 @@
 
 // Main data types
 typedef struct nsdb      nsdb_t;
-typedef struct txn       txn_t;
+typedef struct nsdb_txn  nsdb_txn_t;
 typedef struct nsdb_var  nsdb_var_t;
 typedef struct nsdb_plan nsdb_plan_t;
 
@@ -78,25 +78,66 @@ void ns_var_free (nsdb_var_t *var);
 
 //////////////////////////////////// Error handling
 
-// Get the error string of what just happened
-const char *ns_strerror (nsdb_t *ns);
+/**
+ * Where the error of a failed call is
+ *
+ * A call that fails returns a negative number or NULL. The reason is kept
+ * in two places:
+ *
+ *   1. On the transaction you passed, if you passed one. A transaction
+ *      belongs to one thread, so this error is yours alone.
+ *   2. On the database. Every failed call on any thread sets it, so with
+ *      several threads a later failure replaces an earlier one.
+ *
+ * An error stays until you take it with one of the functions below. A call
+ * that works doesn't clear it. So take the error after each call that
+ * fails - otherwise it's still there when you ask after a later call.
+ *
+ * Each function returns the message of the pending error, or NULL when
+ * there is none, and clears the error. A second call returns NULL.
+ *
+ * [copy] true:  the message is a new string, and you free() it. This is
+ *               thread safe. If there is no memory for the string the
+ *               result is NULL and the error stays pending.
+ * [copy] false: the message points into the database (or transaction) and
+ *               the next failure overwrites it. This is NOT thread safe on
+ *               a database that other threads use: another thread's failure
+ *               can change the string while you read it.
+ *
+ * Example:
+ *    if (ns_execute(db, NULL, "create foo u32") < 0) {
+ *      char *msg = (char *)ns_strerror(db, true);
+ *      fprintf(stderr, "%s\n", msg);
+ *      free(msg);
+ *    }
+ */
 
-// Get the error string of what just happened to a plan
-const char *ns_plan_strerror (nsdb_plan_t *plan);
+// The error of the last failed call on the database, from any thread
+const char *ns_strerror (nsdb_t *ns, bool copy);
+
+// A plan has no error of its own: this is ns_strerror on the plan's database
+const char *ns_plan_strerror (nsdb_plan_t *plan, bool copy);
+
+// The error of the last failed call that ran in [txn]. Use this from a
+// thread that shares the database - no other thread can replace it.
+//
+// ns_commit and ns_rollback end [txn], also when they fail. Take their error
+// with ns_strerror
+const char *ns_txn_strerror (nsdb_t *ns, nsdb_txn_t *txn, bool copy);
 
 //////////////////////////////////// Transactions
 
-// Begin a transaction
-txn_t *ns_begin (nsdb_t *ns);
+// Begin a transaction. NULL on failure - the error is on the database
+nsdb_txn_t *ns_begin (nsdb_t *ns);
 
 // Commit a transaction
-int ns_commit (nsdb_t *ns, txn_t *txn);
+int ns_commit (nsdb_t *ns, nsdb_txn_t *txn);
 
 // Roll back a transaction
-int ns_rollback (nsdb_t *ns, txn_t *txn);
+int ns_rollback (nsdb_t *ns, nsdb_txn_t *txn);
 
 typedef void (*nsdb_var_consumer) (nsdb_var_t *v, void *ctx);
-int ns_visit_nsdb_vars (nsdb_t *db, nsdb_var_consumer consumer, struct txn *tx, void *ctx);
+int ns_visit_nsdb_vars (nsdb_t *db, nsdb_var_consumer consumer, nsdb_txn_t *tx, void *ctx);
 
 //////////////////////////////////// Numstore Execution patterns
 
@@ -139,8 +180,8 @@ void ns_plan_free (nsdb_plan_t *plan);
  *    ns_execute(db, tx, "read foo[0:10]");        X FAILS
  *    ns_execute(db, tx, "write foo[0:10]");       X FAILS
  */
-int ns_execute (nsdb_t *db, struct txn *tx, const char *fmt, ...);
-int ns_plan_execute (nsdb_plan_t *plan, struct txn *tx);
+int ns_execute (nsdb_t *db, nsdb_txn_t *tx, const char *fmt, ...);
+int ns_plan_execute (nsdb_plan_t *plan, nsdb_txn_t *tx);
 
 /**
  * Get the variable associated with a query
@@ -155,13 +196,15 @@ int ns_plan_execute (nsdb_plan_t *plan, struct txn *tx);
  *    nsdb_var_t* var = ns_get_var(db, tx, "delete foo");
  *
  * NULL is not always an error: "get if exists foo" returns NULL when there
- * is no foo. Check ns_strerror - it's NULL when nothing went wrong
+ * is no foo. Check ns_strerror - it's NULL when nothing went wrong. That
+ * only works if no earlier error is still pending, so take the error after
+ * every call that fails
  *
  *    nsdb_var_t* var = ns_get_var(db, tx, "get if exists foo");
- *    if (var == NULL && ns_strerror(db) == NULL) { // no foo }
+ *    if (var == NULL && ns_strerror(db, false) == NULL) { // no foo }
  */
-nsdb_var_t *ns_get_var (nsdb_t *db, struct txn *tx, const char *query, ...);
-nsdb_var_t *ns_plan_get_var (nsdb_plan_t *plan, struct txn *tx);
+nsdb_var_t *ns_get_var (nsdb_t *db, nsdb_txn_t *tx, const char *query, ...);
+nsdb_var_t *ns_plan_get_var (nsdb_plan_t *plan, nsdb_txn_t *tx);
 
 /**
  * Execute a query and read into a fixed sized buffer
@@ -178,8 +221,8 @@ nsdb_var_t *ns_plan_get_var (nsdb_plan_t *plan, struct txn *tx);
  *    sb_size len = ns_read(db, tx, dest, sizeof(dest), "insert foo 0 10");   X
  * FAILS sb_size len = ns_read(db, tx, dest, sizeof(dest), "get foo"); X FAILS
  */
-sb_size ns_read (nsdb_t *db, txn_t *txn, void *dest, b_size dlen, const char *fmt, ...);
-sb_size ns_plan_read (nsdb_plan_t *plan, txn_t *txn, void *dest, b_size dlen);
+sb_size ns_read (nsdb_t *db, nsdb_txn_t *txn, void *dest, b_size dlen, const char *fmt, ...);
+sb_size ns_plan_read (nsdb_plan_t *plan, nsdb_txn_t *txn, void *dest, b_size dlen);
 
 /**
  * Execute a query and write out of a fixed sized buffer
@@ -197,8 +240,8 @@ sb_size ns_plan_read (nsdb_plan_t *plan, txn_t *txn, void *dest, b_size dlen);
  *    void* data = ns_malloc(db, tx, &len, "insert foo 0 10");   X FAILS
  *    void* data = ns_malloc(db, tx, &len, "delete foo");        X FAILS
  */
-sb_size ns_write (nsdb_t *db, txn_t *txn, const void *src, b_size dlen, const char *fmt, ...);
-sb_size ns_plan_write (nsdb_plan_t *plan, txn_t *tx, const void *src, b_size dlen);
+sb_size ns_write (nsdb_t *db, nsdb_txn_t *txn, const void *src, b_size dlen, const char *fmt, ...);
+sb_size ns_plan_write (nsdb_plan_t *plan, nsdb_txn_t *tx, const void *src, b_size dlen);
 
 /**
  * Execute a query and malloc an output buffer
@@ -218,15 +261,15 @@ sb_size ns_plan_write (nsdb_plan_t *plan, txn_t *tx, const void *src, b_size dle
  *    void* data = ns_malloc(db, tx, &len, "insert foo 0 10");   X FAILS
  *    void* data = ns_malloc(db, tx, &len, "delete foo");        X FAILS
  */
-void *ns_malloc (nsdb_t *db, txn_t *txn, b_size *dlen, const char *fmt, ...);
-void *ns_plan_malloc (nsdb_plan_t *plan, txn_t *tx, b_size *dlen);
+void *ns_malloc (nsdb_t *db, nsdb_txn_t *txn, b_size *dlen, const char *fmt, ...);
+void *ns_plan_malloc (nsdb_plan_t *plan, nsdb_txn_t *tx, b_size *dlen);
 
 //////////////////////////////////// Smartfiles Execution patterns
 
 /**
  * Returns the size of a smart file under the view of transaction [tx]
  */
-sb_size ns_smfile_size (nsdb_t *smf, txn_t *tx);
+sb_size ns_smfile_size (nsdb_t *smf, nsdb_txn_t *tx);
 
 /**
  * Insert array [src] into index [bofst] into the smart file
@@ -242,7 +285,7 @@ sb_size ns_smfile_size (nsdb_t *smf, txn_t *tx);
  *
  * smf:         [0, 1, 2, 6, 7, 8, 3, 4, 5]
  */
-sb_size ns_smfile_insert (nsdb_t *smf, txn_t *tx, const void *src, sb_size bofst, b_size slen);
+sb_size ns_smfile_insert (nsdb_t *smf, nsdb_txn_t *tx, const void *src, sb_size bofst, b_size slen);
 
 /**
  * Overwrite array with [src] - optionally provide size > 1 byte to
@@ -265,7 +308,7 @@ sb_size ns_smfile_insert (nsdb_t *smf, txn_t *tx, const void *src, sb_size bofst
  */
 sb_size ns_smfile_write (
     nsdb_t     *smf,
-    txn_t      *tx,
+    nsdb_txn_t *tx,
     const void *src,
     t_size      size,
     sb_size     bofst,
@@ -292,13 +335,13 @@ sb_size ns_smfile_write (
  *  * TODO
  */
 sb_size ns_smfile_read (
-    nsdb_t *smf,
-    txn_t  *tx,
-    void   *dest,
-    t_size  size,
-    sb_size bofst,
-    sb_size stride,
-    b_size  nelem
+    nsdb_t     *smf,
+    nsdb_txn_t *tx,
+    void       *dest,
+    t_size      size,
+    sb_size     bofst,
+    sb_size     stride,
+    b_size      nelem
 );
 
 /**
@@ -322,13 +365,13 @@ sb_size ns_smfile_read (
  *  * TODO
  */
 sb_size ns_smfile_remove (
-    nsdb_t *smf,
-    txn_t  *tx,
-    void   *dest,
-    t_size  size,
-    sb_size bofst,
-    sb_size stride,
-    b_size  nelem
+    nsdb_t     *smf,
+    nsdb_txn_t *tx,
+    void       *dest,
+    t_size      size,
+    sb_size     bofst,
+    sb_size     stride,
+    b_size      nelem
 );
 
 #endif

@@ -16,7 +16,7 @@ class TestTransaction:
             txn.write(f"insert foo 0 {src.size}", src)
 
         dest = np.zeros(3, dtype=np.uint32)
-        n = db.read_into(f"read foo[0:] blimit {dest.nbytes}", dest)
+        n = db.read_into("read foo[0:]", dest)
         assert n == dest.size
         np.testing.assert_array_equal(dest, src)
 
@@ -29,7 +29,7 @@ class TestTransaction:
         txn.rollback()
 
         dest = np.zeros(3, dtype=np.uint32)
-        n = db.read_into(f"read foo[0:] blimit {dest.nbytes}", dest)
+        n = db.read_into("read foo[0:]", dest)
         assert n == 0
 
     def test_reusing_closed_transaction_raises(self, db):
@@ -39,7 +39,7 @@ class TestTransaction:
         txn.commit()
 
         with pytest.raises(RuntimeError):
-            txn.read_into("read foo[0:] blimit 4", np.zeros(1, dtype=np.uint32))
+            txn.read_into("read foo[0:]", np.zeros(1, dtype=np.uint32))
 
     def test_double_commit_raises(self, db):
         txn = db.begin()
@@ -166,3 +166,32 @@ class TestTransaction:
         buf = np.zeros(max(reported, 1) * 2 + 8, dtype=np.uint32)
         assert (reported, db.read_into("read foo", buf)) == (6, 6)
         np.testing.assert_array_equal(db.read("read foo"), np.arange(6))
+
+    ############# errors
+    def test_a_failure_in_a_transaction_carries_its_own_message(self, db):
+        with db.begin() as txn:
+            with pytest.raises(RuntimeError, match="nope"):
+                txn.read("read nope")
+
+    def test_a_failure_in_a_transaction_does_not_leak_into_later_calls(self, db):
+        """The error is taken from the transaction and from the database when
+        it's raised, so neither one is mistaken for a later failure."""
+        with db.begin() as txn:
+            with pytest.raises(RuntimeError):
+                txn.read("read nope")
+
+            assert txn.get("get if exists nope") is None
+            txn.execute("create foo u32")
+            assert txn.get("get if exists foo") is not None
+
+        assert db.get("get if exists nope") is None
+
+    def test_a_failure_outside_a_transaction_is_not_raised_inside_it(self, db):
+        txn = db.begin()
+        with pytest.raises(RuntimeError, match="valid operation"):
+            db.execute("this is not a query")
+
+        assert txn.get("get if exists nope") is None
+        with pytest.raises(RuntimeError, match="nope"):
+            txn.read("read nope")
+        txn.rollback()

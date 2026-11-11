@@ -33,8 +33,8 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 #####################################################################
-### The numstore library
-add_subdirectory(libs/numstore)
+### The numstore libraries
+add_subdirectory(libs)
 
 #####################################################################
 ### pynumstore
@@ -53,7 +53,9 @@ if(SKBUILD)
         WITH_SOABI
         libs/pynumstore/ns_pynumstore.c
     )
-    target_link_libraries(_pynumstore PRIVATE numstore Python::NumPy)
+    # pynumstore sits on the nsdb layer, not on the public ns_* api, so it
+    # needs ns_nsdb (and what that links to) and nothing of ns_numstore
+    target_link_libraries(_pynumstore PRIVATE ns_nsdb Python::NumPy)
     set_target_properties(_pynumstore PROPERTIES C_VISIBILITY_PRESET hidden)
 
     install(TARGETS _pynumstore LIBRARY DESTINATION pynumstore COMPONENT python)
@@ -65,8 +67,11 @@ endif()
 ### Rust setup
 include(cmake/Rust.cmake)
 
-corrosion_set_env_vars(numstore_rs NUMSTORE_LIB_DIR=$<TARGET_FILE_DIR:numstore>)
-add_dependencies(_cargo-build_numstore_rs numstore)
+corrosion_set_env_vars(
+    numstore_rs
+    NUMSTORE_LIB_DIR=$<TARGET_FILE_DIR:ns_numstore>
+)
+add_dependencies(_cargo-build_numstore_rs ns_numstore)
 
 #####################################################################
 ### apps
@@ -79,7 +84,7 @@ file(GLOB NUMSTORE_SAMPLES CONFIGURE_DEPENDS samples/*.c)
 foreach(sample IN LISTS NUMSTORE_SAMPLES)
     get_filename_component(name ${sample} NAME_WE)
     add_executable(${name} ${sample})
-    target_link_libraries(${name} PRIVATE numstore)
+    target_link_libraries(${name} PRIVATE ns_numstore)
 endforeach()
 
 #####################################################################

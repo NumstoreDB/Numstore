@@ -40,11 +40,11 @@ main (void)
 
   // Do 1 full committed transaction
   {
-    txn_t  *tx = ns_begin (smf);
+    nsdb_txn_t *tx = ns_begin (smf);
 
-    uint8_t header[8];
-    uint8_t body[64];
-    uint8_t footer[8];
+    uint8_t     header[8];
+    uint8_t     body[64];
+    uint8_t     footer[8];
 
     memset (header, 1, sizeof (header));
     for (int i = 0; i < 64; ++i) {
@@ -62,9 +62,9 @@ main (void)
 
   // Do 1 full roll'ed back transaction
   {
-    txn_t  *tx = ns_begin (smf);
+    nsdb_txn_t *tx = ns_begin (smf);
 
-    uint8_t zeros[80];
+    uint8_t     zeros[80];
     memset (zeros, 0, sizeof (zeros));
 
     // overwrite everything with 0x00
@@ -86,9 +86,9 @@ main (void)
 
   // A committed transaction
   {
-    txn_t  *tx = ns_begin (smf);
+    nsdb_txn_t *tx = ns_begin (smf);
 
-    uint8_t extra[4];
+    uint8_t     extra[4];
     memset (extra, 0xCC, sizeof (extra));
     ns_smfile_insert (smf, tx, extra, 80,
                       sizeof (extra)); // append 4 bytes of 0xcc
@@ -98,7 +98,7 @@ main (void)
 
   // A roll'ed back transaction
   {
-    txn_t *tx = ns_begin (smf);
+    nsdb_txn_t *tx = ns_begin (smf);
     ns_smfile_remove (smf, tx, NULL, 1, 80, 1, 4); // attempt to remove what we
                                                    // just appended
     ns_rollback (smf, tx);

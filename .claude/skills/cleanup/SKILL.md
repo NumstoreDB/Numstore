@@ -35,7 +35,7 @@ The rest of the items are never done. Do a few of each per pass.
 2. Error checks compare with `< 0`
 ----------------------------------
 
-Errors are negative `err_t` codes (`core/ns_error.h`). Test for failure with
+Errors are negative `err_t` codes (`common/ns_error.h`). Test for failure with
 `< 0`, not by truthiness:
 
 ```c
@@ -85,7 +85,7 @@ prints as a huge number. Look up the declared type of each argument.
 ---------------------------
 
 Where a sum or product can overflow (sizes, offsets, counts from disk or the
-user), use the helpers in `core/ns_bounds.h` (`safe_add_u32`, `safe_mul_u32`,
+user), use the helpers in `common/ns_bounds.h` (`safe_add_u32`, `safe_mul_u32`,
 ...) and report `ERR_ARITH` on overflow:
 
 ```c
@@ -202,7 +202,7 @@ other (tests that open two databases, or that must not collide).
 Run clang-tidy on a few files, using the `.clang-tidy` config in the repo:
 
 ```sh
-/opt/homebrew/opt/llvm/bin/clang-tidy -p . libs/numstore/src/core/ns_foo.c
+/opt/homebrew/opt/llvm/bin/clang-tidy -p . libs/common/ns_foo.c
 ```
 
 These are usually worth fixing:
@@ -283,7 +283,7 @@ unsigned) is explicit. For each one:
 - If it's a mistake (the destination type is just wrong), fix the type.
 - If the value provably fits, `ASSERT` that it fits, then cast.
 - If it might not fit and the function already returns errors, check with
-  the `core/ns_bounds.h` helpers and return `ERR_ARITH`. If the function
+  the `common/ns_bounds.h` helpers and return `ERR_ARITH`. If the function
   doesn't return errors, assert and leave a `TODO` (don't add an error path).
 
 `bugprone-narrowing-conversions` and `-Wshorten-64-to-32` find these.

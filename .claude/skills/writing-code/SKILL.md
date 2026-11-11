@@ -1,6 +1,6 @@
 ---
 name: writing-code
-description: Style, simplicity, function design, assertions and commenting rules for C code in Numstore. Use whenever you write, modify or review C code under libs/numstore/src/, including tests, so new code reads like the surrounding code.
+description: Style, simplicity, function design, assertions and commenting rules for C code in Numstore. Use whenever you write, modify or review C code under libs/, including tests, so new code reads like the surrounding code.
 ---
 
 Writing code in Numstore

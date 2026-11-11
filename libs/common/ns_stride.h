@@ -1,0 +1,203 @@
+/// Copyright 2026 Theo Lincke
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+
+#ifndef NS_STRIDE_H
+#define NS_STRIDE_H
+
+#include "ns_arena_alloc.h"
+#include "ns_csx_assert.h"
+#include "ns_error.h"
+#include "ns_linked_list.h"
+#include "ns_platform.h"
+#include "ns_stdtypes.h"
+
+#include <stdbool.h>
+
+enum
+{
+  START_PRESENT = (1 << 0),
+  STEP_PRESENT  = (1 << 1),
+  STOP_PRESENT  = (1 << 2),
+  COLON_PRESENT = (1 << 3),
+};
+
+struct user_stride
+{
+  int64_t  start;
+  int64_t  step;
+  int64_t  stop;
+  uint32_t present; // The above flags
+};
+
+struct stride
+{
+  u64 start;
+  u64 stride;
+  u64 nelems;
+};
+
+#define stride_ustr_args(s) (s).start, (s).start + ((s).stride * (s).nelems), (s).stride
+
+DEFINE_DBG_ASSERT (struct user_stride, user_stride, u, {
+  ASSERT (u);
+
+  // No unknown flag bits
+  ASSERT ((u->present & ~(u32)(START_PRESENT | STEP_PRESENT | STOP_PRESENT | COLON_PRESENT)) == 0);
+
+  // Without a colon it's a bare index ("1"): only start, and start is required
+  if (!(u->present & COLON_PRESENT)) {
+    ASSERT (u->present == START_PRESENT);
+  }
+
+  // Step and stop can only appear after a colon
+  if (u->present & (STEP_PRESENT | STOP_PRESENT)) {
+    ASSERT (u->present & COLON_PRESENT);
+  }
+
+  // A zero step is never valid
+  if (u->present & STEP_PRESENT) {
+    ASSERT (u->step != 0);
+  }
+})
+
+struct multi_user_stride
+{
+  struct user_stride *strides;
+  u32                 len;
+};
+
+/**
+ * @brief all elements from 0 to end
+ */
+#define USER_STRIDE_ALL                                        \
+  ((struct user_stride){                                       \
+      .start   = 0,                                            \
+      .step    = 1,                                            \
+      .stop    = 0,                                            \
+      .present = STEP_PRESENT | START_PRESENT | COLON_PRESENT, \
+  })
+
+bool user_stride_equal (const struct user_stride *left, const struct user_stride *right);
+void stride_resolve_expect (struct stride *dest, struct user_stride src, u64 arrlen);
+err_t stride_resolve (struct stride *dest, struct user_stride src, u64 arrlen, error *e);
+
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Small Constructors
+ * @brief Short Constructors for building user strides
+ *----------------------------------------------------------------------------*/
+
+#define make_ustride(start_, stop_, step_, present_) \
+  ((struct user_stride){                             \
+      .start   = (start_),                           \
+      .stop    = (stop_),                            \
+      .step    = (step_),                            \
+      .present = (present_),                         \
+  })
+
+// [:stop]
+HEADER_FUNC struct user_stride
+ustride1 (i64 stop)
+{
+  return make_ustride (0, stop, 0, STOP_PRESENT | COLON_PRESENT);
+}
+
+// [::step]
+HEADER_FUNC struct user_stride
+ustride2 (i64 step)
+{
+  return make_ustride (0, 0, step, STEP_PRESENT | COLON_PRESENT);
+}
+
+// [:stop:step]
+HEADER_FUNC struct user_stride
+ustride12 (i64 stop, i64 step)
+{
+  return make_ustride (0, stop, step, STOP_PRESENT | STEP_PRESENT | COLON_PRESENT);
+}
+
+// [start:]
+HEADER_FUNC struct user_stride
+ustride0 (i64 start)
+{
+  return make_ustride (start, 0, 0, START_PRESENT | COLON_PRESENT);
+}
+
+// [start:stop]
+HEADER_FUNC struct user_stride
+ustride01 (i64 start, i64 stop)
+{
+  return make_ustride (start, stop, 0, STOP_PRESENT | START_PRESENT | COLON_PRESENT);
+}
+
+// [start::step]
+HEADER_FUNC struct user_stride
+ustride02 (i64 start, i64 step)
+{
+  return make_ustride (start, 0, step, STEP_PRESENT | START_PRESENT | COLON_PRESENT);
+}
+
+// [start:stop:step]
+HEADER_FUNC struct user_stride
+ustride012 (i64 start, i64 stop, i64 step)
+{
+  return make_ustride (
+      start,
+      stop,
+      step,
+      STOP_PRESENT | STEP_PRESENT | START_PRESENT | COLON_PRESENT
+  );
+}
+
+// [start]  - bare index, no colon
+HEADER_FUNC struct user_stride
+ustride_single (i64 start)
+{
+  return make_ustride (start, 0, 0, START_PRESENT);
+}
+
+// [:]  - colon only
+HEADER_FUNC struct user_stride
+ustride (void)
+{
+  return make_ustride (0, 0, 0, COLON_PRESENT);
+}
+
+HEADER_FUNC struct user_stride
+usfrms (const struct stride str)
+{
+  return ustride012 (stride_ustr_args (str));
+}
+
+/*-----------------------------------------------------------------------------
+ * SUBSECTION: Multi User Stride Builder
+ *----------------------------------------------------------------------------*/
+
+struct mus_llnode
+{
+  struct user_stride stride;
+  struct llnode      link;
+};
+
+struct mus_builder
+{
+  struct llnode  *head;
+  struct builder *b;
+};
+
+struct mus_builder musb_create (struct builder *b);
+err_t musb_accept_key (struct mus_builder *eb, struct user_stride stride, error *e);
+err_t musb_build (struct multi_user_stride *dest, struct mus_builder *eb, error *e);
+err_t user_stride_validate (struct user_stride u, error *e);
+
+#endif // NS_STRIDE_H
