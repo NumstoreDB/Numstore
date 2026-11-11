@@ -99,7 +99,11 @@ struct query
 
 bool query_equal (const struct query *left, const struct query *right);
 
-err_t query_vname_of_interest (struct string *dest, const struct query *q, error *e);
+// Turns any query with a variable in it into the get query for that variable
+//
+// if_exists carries over from delete and get. It's false for the rest -
+// they expect the variable to be there
+err_t query_to_get (struct query *dest, const struct query *q, error *e);
 
 sb_size ns_query_fcompile (
     struct arena_alloc *alloc, // Where to allocate query

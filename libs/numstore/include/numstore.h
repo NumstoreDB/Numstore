@@ -153,6 +153,12 @@ int ns_plan_execute (nsdb_plan_t *plan, struct txn *tx);
  *    nsdb_var_t* var = ns_get_var(db, tx, "get foo");
  *    nsdb_var_t* var = ns_get_var(db, tx, "insert foo[0:10]");
  *    nsdb_var_t* var = ns_get_var(db, tx, "delete foo");
+ *
+ * NULL is not always an error: "get if exists foo" returns NULL when there
+ * is no foo. Check ns_strerror - it's NULL when nothing went wrong
+ *
+ *    nsdb_var_t* var = ns_get_var(db, tx, "get if exists foo");
+ *    if (var == NULL && ns_strerror(db) == NULL) { // no foo }
  */
 nsdb_var_t *ns_get_var (nsdb_t *db, struct txn *tx, const char *query, ...);
 nsdb_var_t *ns_plan_get_var (nsdb_plan_t *plan, struct txn *tx);

@@ -177,7 +177,7 @@ or data out:
 | Method               | Queries it accepts         | Returns                        |
 | -------------------- | -------------------------- | ------------------------------ |
 | `db.execute(q)`      | `CREATE` `DELETE` `REMOVE` | `None`                         |
-| `db.get(q)`          | Anything with a variable   | a `Var` (metadata)             |
+| `db.get(q)`          | Anything with a variable   | a `Var`, `None` if not exists  |
 | `db.get_all()`       | takes no query             | `list[Var]`, one per variable  |
 | `db.write(q, data)`  | `INSERT` `WRITE`           | `int` - elements written       |
 | `db.read(q)`         | `READ` `REMOVE`            | a fresh `numpy` array          |

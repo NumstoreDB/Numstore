@@ -39,7 +39,7 @@ class Queries:
         with db.prepare(query) as plan:
             return plan.write(data, txn)
 
-    def get(self, query: str) -> Var:
+    def get(self, query: str) -> Var | None:
         db, txn = self._target()
         with db.prepare(query) as plan:
             return plan.var(txn)

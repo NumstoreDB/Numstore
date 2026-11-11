@@ -552,7 +552,7 @@ nsdb_plan_create (struct nsdb *db, const char *query, error *_e)
   ret->parent = db;
   arena_alloc_create_default (&ret->alloc);
 
-  if (compile_query (&ret->q, query, &ret->alloc, e) < 0) {
+  if (compile_and_validate_query (&ret->q, query, &ret->alloc, e) < 0) {
     arena_alloc_free_all (&ret->alloc);
     slab_alloc_free (&db->plan_alloc, ret);
     return NULL;
@@ -678,7 +678,7 @@ nsdb_plan_execute (struct nsdb_plan *ns, struct txn *user_tx, error *_e)
       break;
     }
     case QT_DELETE: {
-      ret = numstore_delete (ns->parent->p, tx, ns->q.delete.name, false, e);
+      ret = numstore_delete (ns->parent->p, tx, ns->q.delete.name, ns->q.delete.if_exists, e);
       break;
     }
 
@@ -712,9 +712,9 @@ nsdb_plan_get_var (struct nsdb_plan *ns, struct txn *user_tx, error *_e)
 
   DBG_ASSERT (nsdb_plan, ns);
 
-  // Get the variable name of interest
-  struct string name;
-  if (query_vname_of_interest (&name, &ns->q, e) < 0) {
+  // The get query for the variable this plan is about
+  struct query get;
+  if (query_to_get (&get, &ns->q, e) < 0) {
     return NULL;
   }
 
@@ -731,10 +731,16 @@ nsdb_plan_get_var (struct nsdb_plan *ns, struct txn *user_tx, error *_e)
 
   struct arena_alloc *alloc = nsdb_var_alloc (var);
   struct variable    *dest  = nsdb_var_var (var);
-  err_t               err   = numstore_get (ns->parent->p, tx, false, name, alloc, dest, e);
+  err_t err = numstore_get (ns->parent->p, tx, get.get.if_exists, get.get.name, alloc, dest, e);
 
   // Fails if numstore_get failed OR the auto commit / rollback failed
   if (nsdb_auto_finish (ns->parent, user_tx, err, e) < 0) {
+    nsdb_var_free (var);
+    return NULL;
+  }
+
+  // "if exists" on a missing variable - NULL with a clean error
+  if (dest->dtype == NULL) {
     nsdb_var_free (var);
     return NULL;
   }
@@ -1552,8 +1558,6 @@ nsdb_read (struct nsdb *db, struct txn *txn, void *dest, b_size dlen, const char
 
   DBG_ASSERT (nsdb, db);
   ASSERT (query);
-  ASSERT (dest);
-  ASSERT (dlen > 0);
 
   struct nsdb_plan *plan = nsdb_plan_create (db, query, e);
   if (plan == NULL) {
@@ -1600,8 +1604,6 @@ nsdb_write (
 
   DBG_ASSERT (nsdb, db);
   ASSERT (query);
-  ASSERT (src);
-  ASSERT (dlen > 0);
 
   struct nsdb_plan *plan = nsdb_plan_create (db, query, e);
   if (plan == NULL) {

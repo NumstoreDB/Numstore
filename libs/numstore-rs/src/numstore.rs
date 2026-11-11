@@ -204,13 +204,25 @@ pub fn rs_ns_plan_execute(plan: NonNull<nsdb_plan_t>, tx: Option<NonNull<txn_t>>
 pub fn rs_ns_plan_get_var(
     plan: NonNull<nsdb_plan_t>,
     tx: Option<NonNull<txn_t>>,
-) -> Result<NonNull<nsdb_var_t>> {
+) -> Result<Option<NonNull<nsdb_var_t>>> {
     let handle = unsafe {
         let tx = tx.map_or(std::ptr::null_mut(), |p| p.as_ptr());
         ns_plan_get_var(plan.as_ptr(), tx)
     };
 
-    NonNull::new(handle).ok_or_else(|| Error::new(ErrorType::IoErr, rs_ns_plan_strerror(plan)))
+    if let Some(handle) = NonNull::new(handle) {
+        return Ok(Some(handle));
+    }
+
+    // NULL with no error string is "get if exists" on a missing variable
+    let msg = unsafe { ns_plan_strerror(plan.as_ptr()) };
+    if msg.is_null() {
+        Ok(None)
+    } else {
+        Err(Error::new(ErrorType::IoErr, unsafe {
+            clone_cstrtostr(msg)
+        }))
+    }
 }
 
 pub fn rs_ns_plan_read(

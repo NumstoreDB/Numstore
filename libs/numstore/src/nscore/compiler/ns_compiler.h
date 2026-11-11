@@ -70,4 +70,19 @@ err_t compile_type_ref (
 
 err_t compile_query (struct query *dest, const char *text, struct arena_alloc *dalloc, error *e);
 
+// Checks what the grammar can't - e.g. a create type that's too wide
+err_t validate_query (const struct query *q, error *e);
+
+HEADER_FUNC err_t
+compile_and_validate_query (
+    struct query       *dest,
+    const char         *text,
+    struct arena_alloc *dalloc,
+    error              *e
+)
+{
+  WRAP (compile_query (dest, text, dalloc, e));
+  return validate_query (dest, e);
+}
+
 #endif // COMPILER_H

@@ -944,14 +944,6 @@ class TestDeleteVerb:
         assert db.get_all() == []
 
     ############# delete if exists
-    @pytest.mark.xfail(
-        reason="the `if exists` flag is dead. parse_query_delete stores it in "
-        "query.delete.if_exists, ns_query.c compares it, and nothing else ever "
-        "reads it -- so the executor still raises \"Variable: nope doesn't "
-        'exist", which is the one thing the clause exists to prevent.',
-        strict=True,
-        raises=RuntimeError,
-    )
     def test_delete_if_exists_on_a_missing_variable_is_a_noop(self, db):
         db.execute("delete if exists nope")
 
@@ -983,14 +975,6 @@ class TestDeleteVerb:
 
         assert db.get("get if exists foo") == ns.Var("foo", "u32", 0, 4)
 
-    @pytest.mark.xfail(
-        reason="same dead flag as delete: query.get.if_exists is parsed and "
-        "stored but never read, so the miss raises instead of reporting "
-        "absence. Whoever implements it also has to decide what the Python "
-        "binding returns -- Var is not nullable today.",
-        strict=True,
-        raises=RuntimeError,
-    )
     def test_get_if_exists_on_a_missing_variable_returns_none(self, db):
         """The point of `if exists` is to ask without it being an error."""
         assert db.get("get if exists nope") is None

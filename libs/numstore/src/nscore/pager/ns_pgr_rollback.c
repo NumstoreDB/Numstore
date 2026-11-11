@@ -62,7 +62,31 @@ pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e)
           page_set_page_lsn (page_h_w (&ph), prev_lsn);
           tx->data.last_lsn = prev_lsn;
 
+          // The undo dirtied this page. If the page was flushed since the
+          // update it undoes (evicted, checkpointed) it's not in the dirty
+          // page table anymore, and a page that isn't in there never gets
+          // written out again - the undo would be lost on the next eviction
+          //
+          // ARIES: this is part of ARIES, not an addition to it
+          //      - 4.4: any page fixed for an update that isn't already
+          //        dirty goes in the dirty page table with RecLSN = the
+          //        LSN of the record about to be written. An undo is an
+          //        update like any other (it's why it writes a CLR)
+          //      - Fig. 10: analysis does the same thing for a CLR it
+          //        reads, so after a crash this page would be in the table
+          //      - Fig. 8 (rollback) doesn't show it because in the paper
+          //        the buffer manager does it on fix. Here the forward path
+          //        does it in pgr_release, and rollback doesn't go through
+          //        pgr_release - so it's done by hand
+          //      - RecLSN is the CLR's lsn: the page was clean, so the CLR
+          //        is the first record redo would need for it
+          err_t dirty       = dpgt_add_if_ne (p->dpt, pg, prev_lsn, e);
+
           pgr_unfix (&ph, PG_PERMISSIVE);
+
+          if (dirty < 0) {
+            goto failed;
+          }
         }
 
         undo_nxt_lsn = log_rec->update.prev;

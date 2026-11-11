@@ -74,6 +74,62 @@ TEST (prim_t_validate)
 }
 #endif
 
+static u32 prim_t_byte_size (const enum prim_t *t);
+
+// type_byte_size that fails instead of wrapping
+//
+// Only call this on a type whose shape is already validated. It can't use
+// type_byte_size - that asserts a valid type, which is what this decides
+static err_t
+type_checked_byte_size (u32 *dest, const struct type *t, error *e)
+{
+  u32 ret = 0;
+
+  switch (t->type) {
+    case T_PRIM: {
+      ret = prim_t_byte_size (&t->p);
+      break;
+    }
+    case T_STRUCT: {
+      // Fields are laid out back to back
+      for (u32 i = 0; i < t->st.len; ++i) {
+        u32 next;
+        WRAP (type_checked_byte_size (&next, t->st.types[i], e));
+        if (!safe_add_u32 (&ret, ret, next)) {
+          goto too_wide;
+        }
+      }
+      break;
+    }
+    case T_UNION: {
+      // As wide as the widest member
+      for (u32 i = 0; i < t->un.len; ++i) {
+        u32 next;
+        WRAP (type_checked_byte_size (&next, t->un.types[i], e));
+        if (next > ret) {
+          ret = next;
+        }
+      }
+      break;
+    }
+    case T_SARRAY: {
+      WRAP (type_checked_byte_size (&ret, t->sa.t, e));
+      for (u32 i = 0; i < t->sa.rank; ++i) {
+        if (!safe_mul_u32 (&ret, ret, t->sa.dims[i])) {
+          goto too_wide;
+        }
+      }
+      break;
+    }
+  }
+
+  *dest = ret;
+  return SUCCESS;
+
+too_wide:
+  return error_causef (e, ERR_ARITH, "type is wider than %" PRIu32 " bytes", U32_MAX);
+}
+
 err_t
 type_validate (const struct type *t, error *e)
 {
@@ -100,6 +156,9 @@ type_validate (const struct type *t, error *e)
       return error_causef (e, ERR_CORRUPT, "Unknown type code: %d", (int)t->type);
     }
   }
+
+  u32 byte_size;
+  WRAP (type_checked_byte_size (&byte_size, t, e));
 
   u16 size;
   return type_get_serial_size (&size, t, e);

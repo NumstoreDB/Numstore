@@ -88,6 +88,11 @@ numstore_remove (
   // The step started as a positive i64, so it fits in sb_size
   ASSERT (stride.stride <= (u64)I64_MAX);
 
+  // An empty range - the rope takes nelem == 0 as "no limit"
+  if (stride.nelems == 0) {
+    return 0;
+  }
+
   struct ns_remove_params rparams = {
       .p      = p,
       .dest   = dest,

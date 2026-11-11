@@ -85,46 +85,59 @@ query_equal (const struct query *left, const struct query *right)
 }
 
 err_t
-query_vname_of_interest (struct string *dest, const struct query *q, error *e)
+query_to_get (struct query *dest, const struct query *q, error *e)
 {
   ASSERT (dest);
 
+  struct string name;
+  bool          if_exists = false;
+
   switch (q->type) {
+    // These expect the variable - a miss is an error
     case QT_READ: {
-      *dest = q->read.name;
-      return SUCCESS;
+      name = q->read.name;
+      break;
     }
     case QT_WRITE: {
-      *dest = q->write.name;
-      return SUCCESS;
+      name = q->write.name;
+      break;
     }
     case QT_INSERT: {
-      *dest = q->insert.name;
-      return SUCCESS;
+      name = q->insert.name;
+      break;
     }
     case QT_REMOVE: {
-      *dest = q->remove.name;
-      return SUCCESS;
+      name = q->remove.name;
+      break;
+    }
+    case QT_CREATE: {
+      name = q->create.name;
+      break;
     }
 
-    // Variable Operations
-    case QT_CREATE: {
-      *dest = q->create.name;
-      return SUCCESS;
-    }
+    // These carry their own flag
     case QT_DELETE: {
-      *dest = q->delete.name;
-      return SUCCESS;
+      name      = q->delete.name;
+      if_exists = q->delete.if_exists;
+      break;
     }
     case QT_GET: {
-      *dest = q->get.name;
-      return SUCCESS;
+      name      = q->get.name;
+      if_exists = q->get.if_exists;
+      break;
     }
 
     default: {
       return error_causef (e, ERR_INVALID_ARGUMENT, "Unsupported query type - no variable exists");
     }
   }
+
+  *dest = (struct query){
+      .type = QT_GET,
+      .get  = {.name = name, .if_exists = if_exists},
+  };
+
+  return SUCCESS;
 }
 
 sb_size
@@ -157,7 +170,7 @@ ns_query_fcompile (
   ASSERT (qlen >= 0);
   va_end (ap2);
 
-  if (compile_query (q, buf, alloc, e) < 0) {
+  if (compile_and_validate_query (q, buf, alloc, e) < 0) {
     return error_trace (e);
   }
 
@@ -278,54 +291,59 @@ TEST (query_equal)
 /// The variable a query names is what the lock table keys on, so picking the
 /// wrong union arm would lock the wrong variable. Meta queries name no
 /// variable at all and must say so rather than returning a stale string.
-TEST (query_vname_of_interest)
+TEST (query_to_get)
 {
   ALLOC_INIT (alloc);
   error e = error_create ();
 
-#  define VNAME_CASE(text, expected)                                              \
-    do {                                                                          \
-      TEST_CASE ("'%s' -> '%s'", text, expected)                                  \
-      {                                                                           \
-        struct query  q = test_compile (&alloc, text, &e);                        \
-        struct string dest;                                                       \
-        test_assert_int_equal (query_vname_of_interest (&dest, &q, &e), SUCCESS); \
-        test_assert (string_equal (dest, strfcstr (expected)));                   \
-      }                                                                           \
-    }                                                                             \
+#  define TO_GET_CASE(text, expected)                                  \
+    do {                                                               \
+      TEST_CASE ("'%s' -> '%s'", text, expected)                       \
+      {                                                                \
+        struct query q    = test_compile (&alloc, text, &e);           \
+        struct query want = test_compile (&alloc, expected, &e);       \
+        struct query dest;                                             \
+        test_assert_int_equal (query_to_get (&dest, &q, &e), SUCCESS); \
+        test_assert (query_equal (&dest, &want));                      \
+      }                                                                \
+    }                                                                  \
     while (0)
 
-  VNAME_CASE ("read a[0:10:20]", "a");
-  VNAME_CASE ("write b[0:10:20]", "b");
-  VNAME_CASE ("insert c 0 1", "c");
-  VNAME_CASE ("remove d[0:10:20]", "d");
-  VNAME_CASE ("create e i32", "e");
-  VNAME_CASE ("delete f", "f");
-  VNAME_CASE ("get g", "g");
-  VNAME_CASE ("get if exists h", "h");
+  // These expect the variable, so the get they turn into does too
+  TO_GET_CASE ("read a[0:10:20]", "get a");
+  TO_GET_CASE ("write b[0:10:20]", "get b");
+  TO_GET_CASE ("insert c 0 1", "get c");
+  TO_GET_CASE ("remove d[0:10:20]", "get d");
+  TO_GET_CASE ("create e i32", "get e");
+  TO_GET_CASE ("delete f", "get f");
+  TO_GET_CASE ("get g", "get g");
 
-#  undef VNAME_CASE
+  // The flag carries over from the two queries that have one
+  TO_GET_CASE ("delete if exists h", "get if exists h");
+  TO_GET_CASE ("get if exists i", "get if exists i");
+
+#  undef TO_GET_CASE
 
   // Each row is a query with no variable: the call has to fail and leave dest
-  // alone, so a caller cannot act on an uninitialized name.
-#  define NO_VNAME_CASE(text)                                                                  \
-    do {                                                                                       \
-      TEST_CASE ("'%s' has no variable", text)                                                 \
-      {                                                                                        \
-        struct query  q    = test_compile (&alloc, text, &e);                                  \
-        struct string dest = strfcstr ("untouched");                                           \
-        test_assert_int_equal (query_vname_of_interest (&dest, &q, &e), ERR_INVALID_ARGUMENT); \
-        test_assert (string_equal (dest, strfcstr ("untouched")));                             \
-        error_reset (&e);                                                                      \
-      }                                                                                        \
-    }                                                                                          \
+  // alone, so a caller cannot act on an uninitialized query.
+#  define NO_GET_CASE(text)                                                         \
+    do {                                                                            \
+      TEST_CASE ("'%s' has no variable", text)                                      \
+      {                                                                             \
+        struct query q    = test_compile (&alloc, text, &e);                        \
+        struct query dest = q;                                                      \
+        test_assert_int_equal (query_to_get (&dest, &q, &e), ERR_INVALID_ARGUMENT); \
+        test_assert (query_equal (&dest, &q));                                      \
+        error_reset (&e);                                                           \
+      }                                                                             \
+    }                                                                               \
     while (0)
 
-  NO_VNAME_CASE ("exit");
-  NO_VNAME_CASE ("help");
-  NO_VNAME_CASE ("help read");
+  NO_GET_CASE ("exit");
+  NO_GET_CASE ("help");
+  NO_GET_CASE ("help read");
 
-#  undef NO_VNAME_CASE
+#  undef NO_GET_CASE
 
   ALLOC_CLOSE (alloc);
 }

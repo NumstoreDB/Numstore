@@ -40,10 +40,10 @@ impl Plan {
         rs_ns_plan_execute(self.handle, txn.map(|t| t.handle))
     }
 
-    pub fn get(&self, txn: Option<&Txn>) -> Result<Variable> {
-        Ok(Variable {
-            handle: rs_ns_plan_get_var(self.handle, txn.map(|t| t.handle))?,
-        })
+    /// None is `get if exists` on a variable that isn't there
+    pub fn get(&self, txn: Option<&Txn>) -> Result<Option<Variable>> {
+        let handle = rs_ns_plan_get_var(self.handle, txn.map(|t| t.handle))?;
+        Ok(handle.map(|handle| Variable { handle }))
     }
 
     pub fn read(&self, txn: Option<&Txn>, dest: &mut [u8]) -> Result<b_size> {
@@ -111,7 +111,7 @@ impl Database {
         Plan::new(self, query)?.execute(txn)
     }
 
-    pub fn get(&self, txn: Option<&Txn>, query: &str) -> Result<Variable> {
+    pub fn get(&self, txn: Option<&Txn>, query: &str) -> Result<Option<Variable>> {
         Plan::new(self, query)?.get(txn)
     }
 
@@ -210,7 +210,7 @@ mod tests {
         }
 
         let db = Database::open(&path)?;
-        assert_eq!(db.get(None, "get foo")?.len(), 10);
+        assert_eq!(db.get(None, "get foo")?.unwrap().len(), 10);
         Ok(())
     }
 
@@ -228,7 +228,7 @@ mod tests {
         db.execute(Some(&txn), "create foo u64")?;
         db.commit(&txn)?;
 
-        assert_eq!(db.get(None, "get foo")?.len(), 0);
+        assert_eq!(db.get(None, "get foo")?.unwrap().len(), 0);
         Ok(())
     }
 
@@ -289,7 +289,7 @@ mod tests {
         let db = Database::open(&path)?;
 
         db.execute(None, "create foo u32")?;
-        assert_eq!(db.get(None, "get foo")?.len(), 0);
+        assert_eq!(db.get(None, "get foo")?.unwrap().len(), 0);
         Ok(())
     }
 
@@ -304,13 +304,26 @@ mod tests {
     }
 
     #[test]
+    fn get_if_exists_missing_variable_is_none() -> Result<()> {
+        let path = db_path("get_if_exists_missing");
+        let _clean = Cleanup(path.clone());
+        let db = Database::open(&path)?;
+
+        assert!(db.get(None, "get if exists nope")?.is_none());
+
+        db.execute(None, "create foo u32")?;
+        assert!(db.get(None, "get if exists foo")?.is_some());
+        Ok(())
+    }
+
+    #[test]
     fn write_grows_variable() -> Result<()> {
         let path = db_path("write");
         let _clean = Cleanup(path.clone());
         let db = Database::open(&path)?;
 
         populated(&db)?;
-        assert_eq!(db.get(None, "get foo")?.len(), 10);
+        assert_eq!(db.get(None, "get foo")?.unwrap().len(), 10);
         Ok(())
     }
 
@@ -374,7 +387,7 @@ mod tests {
         let mut dest = vec![0u8; 20];
         assert_eq!(db.read(None, &mut dest, "remove foo[0:5]")?, 5);
         assert_eq!(dest, u32_bytes(&[0, 1, 2, 3, 4]));
-        assert_eq!(db.get(None, "get foo")?.len(), 5);
+        assert_eq!(db.get(None, "get foo")?.unwrap().len(), 5);
         Ok(())
     }
 

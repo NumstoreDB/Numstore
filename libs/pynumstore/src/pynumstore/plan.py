@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 
 from . import _pynumstore as _ns
-from .utils import as_source, capture_var, check_dims, layout
+from .utils import as_source, capture_var, capture_var_or_none, check_dims, layout
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -38,8 +38,8 @@ class Plan:
     def execute(self, txn: Transaction | None = None) -> None:
         _ns._pyns_plan_execute(*self._args(txn))
 
-    def var(self, txn: Transaction | None = None) -> Var:
-        return capture_var(*self._args(txn))
+    def var(self, txn: Transaction | None = None) -> Var | None:
+        return capture_var_or_none(*self._args(txn))
 
     def read(self, txn: Transaction | None = None) -> npt.NDArray[Any]:
         plan, txh = self._args(txn)

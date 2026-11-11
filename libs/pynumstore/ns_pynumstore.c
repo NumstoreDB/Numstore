@@ -1265,6 +1265,10 @@ pyns_plan_get_var (PyObject *Py_UNUSED (m), PyObject *args)
   // Run the plan
   struct nsdb_var *var = nsdb_plan_get_var (plan, txn, NULL);
   if (var == NULL) {
+    // "get if exists" on a missing variable - NULL but nothing went wrong
+    if (plan->parent->e->cause_code >= 0) {
+      Py_RETURN_NONE;
+    }
     _pyns_set_error_from_plan (plan);
     return NULL;
   }
@@ -1519,7 +1523,7 @@ static PyMethodDef pynumstore_methods[] = {
         "_pyns_plan_get_var",
         pyns_plan_get_var,
         METH_VARARGS,
-        "_pyns_plan_get_var(plan, txn | None) -> var",
+        "_pyns_plan_get_var(plan, txn | None) -> var | None",
     },
     {
         "_pyns_plan_read",

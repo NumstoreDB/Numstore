@@ -31,9 +31,17 @@ def handle_to_var(handle: nsvar) -> Var:
         _ns._pyns_var_free(handle)
 
 
-def capture_var(plan: nsplan, txn: nstxn | None) -> Var:
+def capture_var_or_none(plan: nsplan, txn: nstxn | None) -> Var | None:
+    # None is `get if exists` on a variable that isn't there
     handle = _ns._pyns_plan_get_var(plan, txn)
-    return handle_to_var(handle)
+    return None if handle is None else handle_to_var(handle)
+
+
+def capture_var(plan: nsplan, txn: nstxn | None) -> Var:
+    var = capture_var_or_none(plan, txn)
+    if var is None:
+        raise RuntimeError("variable doesn't exist")
+    return var
 
 
 def layout(var: Var) -> tuple[np.dtype[Any], tuple[int, ...]]:

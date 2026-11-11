@@ -394,6 +394,20 @@ theend:
   return error_trace (e);
 }
 
+err_t
+validate_query (const struct query *q, error *e)
+{
+  switch (q->type) {
+    case QT_CREATE: {
+      // The parser builds the type but doesn't size it
+      return type_validate (&q->create.type, e);
+    }
+    default: {
+      return SUCCESS;
+    }
+  }
+}
+
 #ifndef NDEBUG
 
 static void
