@@ -64,11 +64,9 @@ Next steps:
   build and link, handle errors, read in chunks, smart files, backups.
 * [**Concepts**](docs/index.md#concepts) - why Numstore exists, the type
   system, transactions and concurrency, durability and errors.
-* [**Python API Reference**](docs/reference/python_api.md) - every class and
-  method in `pynumstore`.
-* [**C API Reference**](docs/reference/c_api.md) - every function, type and
-  constant in `numstore.h`. Also see the [C Quick Start](#c-quick-start) below.
 * [**Glossary**](docs/GLOSSARY.md) - the words that the documents use.
+
+Also see the [C Quick Start](#c-quick-start) below.
 
 Why Numstore?
 -------------

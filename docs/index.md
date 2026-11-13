@@ -53,14 +53,6 @@ A concept page tells why Numstore works as it does.
 * [Durability and crash recovery](concepts/durability.md)
 * [The error model](concepts/errors.md)
 
-Reference
----------
-
-* [**C API**](reference/c_api.md) - every function, type and constant in
-  `numstore.h`.
-* [**Python API**](reference/python_api.md) - every class and method in
-  `pynumstore`.
-
 Samples
 -------
 

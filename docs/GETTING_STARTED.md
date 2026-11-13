@@ -177,5 +177,3 @@ Next steps
 * [The query language](tutorials/language_tour.md) - the seven queries, step
   by step.
 * [Glossary](GLOSSARY.md) - the words that these documents use.
-* [C API reference](reference/c_api.md) and
-  [Python API reference](reference/python_api.md).

@@ -4,9 +4,6 @@ The Query Language
 This tutorial teaches the Numstore query language. It uses Python. The queries
 are the same in C.
 
-Each example is a real Python session. Type the examples in order. Each section
-uses the variables of the sections before it.
-
 * [Start a session](#start-a-session)
 * [The seven queries](#the-seven-queries)
 * [Variable operations](#variable-operations)

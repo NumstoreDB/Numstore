@@ -64,4 +64,3 @@ Next steps
 ----------
 
 * [Getting started](../GETTING_STARTED.md#a-first-program) has a first program.
-* [C API reference](../reference/c_api.md).

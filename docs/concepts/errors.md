@@ -49,5 +49,11 @@ Errors in Python
 ----------------
 
 In Python, Numstore gives standard exceptions. There is no custom exception
-hierarchy to import. The [Python API reference](../reference/python_api.md#errors)
-lists them.
+hierarchy to import.
+
+| Exception             | When                                                                                                                                                   |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `RuntimeError`        | the database or the query layer refused: a missing variable, a query given to the wrong method, a syntax error, a closed database, plan or transaction |
+| `TypeError`           | the data or the buffer has the wrong dtype or the wrong Python type                                                                                    |
+| `ValueError`          | the shape does not fit, a type is not correct, or a transaction is from a different database                                                           |
+| `NotImplementedError` | the type has no numpy form on this platform (`f128`, `cf256`)                                                                                          |

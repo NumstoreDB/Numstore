@@ -80,5 +80,3 @@ In Python
 10
 ```
 
-The [Python API reference](../reference/python_api.md#read_into) gives the
-rules for the buffer.

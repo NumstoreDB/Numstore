@@ -38,8 +38,6 @@ a context manager:
 array([10, 20,  1,  2,  3,  4], dtype=uint32)
 ```
 
-The [Python API reference](../reference/python_api.md#plan) gives all members
-of `Plan`.
 
 In C
 ----

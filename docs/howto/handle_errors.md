@@ -91,8 +91,8 @@ if (ns_write (db, tx, src, sizeof (src), "insert foo 0 4") < 0) {
 Handle errors in Python
 -----------------------
 
-Numstore gives standard Python exceptions. The
-[Python API reference](../reference/python_api.md#errors) lists when each one
+Numstore gives standard Python exceptions.
+[The error model](../concepts/errors.md#errors-in-python) lists when each one
 occurs. The messages are for people to read. So it is usually enough to log the
 exception:
 
@@ -119,6 +119,4 @@ block, Numstore rolls back the whole transaction:
 array([3, 1, 2], dtype=uint32)
 ```
 
-These two examples continue the session in the
-[Python API reference](../reference/python_api.md). There, `counts` is a `u32`
-variable that holds `[1, 2]`.
+In these two examples, `counts` is a `u32` variable that holds `[1, 2]`.

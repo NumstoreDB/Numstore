@@ -2,8 +2,7 @@ Inspect Variables
 =================
 
 This guide shows how to read the metadata of one variable, or of all
-variables. For Python, see `get`, `get_all` and `Var` in the
-[Python API reference](../reference/python_api.md#get-and-get_all).
+variables. For Python, use `db.get`, `db.get_all` and `Var`.
 
 In C
 ----
@@ -101,5 +100,4 @@ What C can see
 
 In C, `ns_var_len` is all of the metadata: the length in elements. The C API
 has no function for the type or the element size. To get those, use the type
-that you wrote in the `create` query. Or use
-[`Var` in Python](../reference/python_api.md#var).
+that you wrote in the `create` query. Or use `Var` in Python.
