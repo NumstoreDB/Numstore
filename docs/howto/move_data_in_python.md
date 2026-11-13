@@ -4,7 +4,7 @@ Move Data In and Out from Python
 The query language says *which* elements to touch. The Python side decides where
 the bytes come from and go.
 
-Everything below is a real Python session. Start with a database:
+Start with a database:
 
 ```python
 >>> import numpy as np

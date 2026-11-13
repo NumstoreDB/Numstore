@@ -2,7 +2,6 @@ Transactions
 ============
 
 This picks up where [the query language tutorial](language_tour.md) left off.
-Everything below is a real Python session, so type the examples in order:
 
 ```python
 >>> import pynumstore as ns
