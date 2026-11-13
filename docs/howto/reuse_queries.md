@@ -1,15 +1,13 @@
 Reuse a Query with a Plan
 =========================
 
-Each query call compiles the query string, runs it, and then discards the
-compiled form. A plan keeps the compiled form. So a query that you run in a
-loop is compiled one time only.
+Every query call compiles its query string, runs it, and throws the compiled
+form away. A plan keeps it, so a query you run in a loop is compiled once.
 
 In Python
 ---------
 
-`db.prepare` makes a plan. This example uses a `u32` variable `out` that holds
-`[1, 2, 3, 4]`:
+`db.prepare` hands you back a plan:
 
 ```python
 >>> db.execute("create out u32")
@@ -25,9 +23,9 @@ array([1, 2], dtype=uint32)
 >>> plan.close()
 ```
 
-A `Plan` has the methods `execute`, `read`, `read_into`, `write` and `var`.
-Each method takes a transaction as an optional last argument. A `Plan` is also
-a context manager:
+A `Plan` has the same `execute` / `read` / `read_into` / `write` / `var`
+methods, each taking an optional transaction as its last argument, and it's a
+context manager like everything else:
 
 ```python
 >>> with db.prepare("insert out 0 2") as plan:
@@ -42,7 +40,7 @@ array([10, 20,  1,  2,  3,  4], dtype=uint32)
 In C
 ----
 
-`ns_plan_fcreate` makes a plan:
+In C, `ns_plan_fcreate` compiles a plan:
 
 ```c
 #include "numstore.h"
@@ -106,8 +104,8 @@ samples now holds 12 elements
 first 4: 1 2 3 4
 ```
 
-Each plan function matches a one-shot function. The plan function takes the
-transaction as an argument. So one compiled plan can run in any transaction:
+Each plan function mirrors the one-shot function, with the transaction as an
+argument so one compiled plan can run inside any transaction:
 
 | One shot      | Prepared           |
 | ------------- | ------------------ |
@@ -118,4 +116,4 @@ transaction as an argument. So one compiled plan can run in any transaction:
 | `ns_get_var`  | `ns_plan_get_var`  |
 | `ns_strerror` | `ns_plan_strerror` |
 
-Release each plan before the database closes.
+Plans must be freed before the database closes.

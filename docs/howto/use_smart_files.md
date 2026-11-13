@@ -1,17 +1,18 @@
 Use Smart Files
 ===============
 
-A smart file uses the same storage engine as a database, but it has no type
-system and no variables. It is one untyped byte array in a file. It has the
-same ACID guarantees. Use it when you want transactional inserts into the
-middle of a blob, and you do not need a schema.
+A smart file is the same storage engine without the type system or variables:
+one untyped byte array in a file, with the same ACID guarantees. Reach for it
+when you want transactional inserts into the middle of a blob and don't need a
+schema.
 
 Open and use a smart file
 -------------------------
 
-Open it with `ns_smfile_open`. Use byte offsets, not queries. `size` is the
-width of one element. `stride` is the number of elements between two touches.
-So a strided write spreads data without a query language:
+Open it with `ns_smfile_open` and address it with byte offsets rather than
+queries. `size` is the width of one element and `stride` is how many elements to
+step between touches, so a strided write spreads data out without a query
+language:
 
 ```c
 #include "numstore.h"
@@ -84,17 +85,17 @@ after remove     (4): 80 4 90 6
 What smart files share with databases
 -------------------------------------
 
-Smart files use the rest of the API. `ns_begin`, `ns_commit`, `ns_rollback`,
+Smart files share the rest of the API: `ns_begin`, `ns_commit`, `ns_rollback`,
 `ns_close`, `ns_crash` and `ns_cleanup` all work on an `nsdb_t *` from
-`ns_smfile_open`. Smart files do not use the query language. A smart file has
-no variables. So `ns_execute`, `ns_read`, `ns_write` and plans do not apply.
+`ns_smfile_open`. What they don't share is the query language - a smart file has
+no variables, so `ns_execute`, `ns_read`, `ns_write` and plans don't apply.
 
 Keep reads in the buffer
 ------------------------
 
-**Caution:** the smart file functions have **no destination length**. This is
-different from `ns_read`. Only `nelem` limits the write into `dest`. So you
-must make sure that `size * nelem` fits in your buffer:
+One sharp edge: unlike `ns_read`, the smart file functions take **no destination
+length**. `nelem` is the only thing bounding the write into `dest`, so it is on
+you to keep `size * nelem` within your buffer:
 
 ```c
 uint32_t out[8];
@@ -107,6 +108,5 @@ ns_smfile_read (smf, NULL, out, sizeof (uint32_t), 0, 1, 8);
 ns_smfile_read (smf, NULL, out, sizeof (uint32_t), 0, 1, NS_END);
 ```
 
-Use `NS_END` only when the buffer can hold the whole file. To check, call
-`ns_smfile_size` first. If the buffer is smaller, give an explicit `nelem` and
-use a loop.
+Use `NS_END` only when the buffer can hold the whole file, which you can check
+first with `ns_smfile_size`. Otherwise pass an explicit `nelem` and loop.

@@ -1,16 +1,17 @@
 Inspect Variables
 =================
 
-This guide shows how to read the metadata of one variable, or of all
-variables. For Python, use `db.get`, `db.get_all` and `Var`.
+How to look at one variable's metadata, or every variable's. In Python that's
+`db.get`, `db.get_all` and `Var` - see
+[the query language tutorial](../tutorials/language_tour.md#variable-operations).
 
 In C
 ----
 
-`ns_get_var` gives you a handle to the metadata of one variable. Any query that
-names a variable works. The query does not run. So you can ask what a
-destructive query *would* touch. Release the handle with `ns_var_free`.
-`ns_visit_nsdb_vars` goes through all variables in the database:
+`ns_get_var` hands you a handle to one variable's metadata. Any query that names
+a variable works and the query itself never runs, so you can ask what a
+destructive query *would* touch. Free the handle with `ns_var_free`;
+`ns_visit_nsdb_vars` walks every variable in the database instead:
 
 ```c
 #include "numstore.h"
@@ -82,22 +83,22 @@ v1 still has 3 elements
 Ownership rules
 ---------------
 
-* A handle from `ns_get_var` is yours. Release it with `ns_var_free`. Each
-  variable has its own memory. So you can release it before or after
-  `ns_close`.
-* A handle that `ns_visit_nsdb_vars` gives to the callback is **not** yours. Do
-  not release it. Do not keep it after the callback. Copy the data that you
-  need.
+Two ownership rules worth keeping straight:
+
+* A handle from `ns_get_var` is yours, and `ns_var_free` releases it. Variables
+  get their own memory, so you may free them before or after `ns_close`.
+* A handle passed to a `ns_visit_nsdb_vars` callback is **not** yours. Don't
+  free it, and don't keep it past the callback - copy out what you need.
 
 The transaction argument
 ------------------------
 
-`ns_visit_nsdb_vars` has a transaction argument, but it does not use it now.
-The walk always sees the committed state.
+`ns_visit_nsdb_vars` takes a transaction argument for symmetry but ignores it
+today: the walk always sees committed state.
 
 What C can see
 --------------
 
-In C, `ns_var_len` is all of the metadata: the length in elements. The C API
-has no function for the type or the element size. To get those, use the type
-that you wrote in the `create` query. Or use `Var` in Python.
+In C, `ns_var_len` is the whole metadata interface - length in elements. The
+type and element size are not exposed as C accessors; when you need those, read
+them from the type you wrote in the `create` query, or use `Var` in Python.

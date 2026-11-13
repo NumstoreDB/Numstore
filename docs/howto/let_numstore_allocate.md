@@ -1,9 +1,9 @@
 Let Numstore Allocate the Buffer
 ================================
 
-`ns_malloc` is `ns_read` without a buffer. It allocates a buffer of the correct
-size and fills it. It writes the **byte** count through `dlen`. The buffer
-comes from the system allocator. So release it with `free`:
+`ns_malloc` is `ns_read` without the buffer: it allocates one the right size,
+fills it, and writes the **byte** count through `dlen`. The buffer comes from
+the system allocator, so release it with plain `free`:
 
 ```c
 #include "numstore.h"
@@ -49,5 +49,5 @@ main (void)
 12 bytes, 3 elements: 1 3 5
 ```
 
-In Python, `db.read` always allocates. See
+In Python you get this for free - `db.read` always allocates. See
 [Move data in and out from Python](move_data_in_python.md#get-data-out).

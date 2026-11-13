@@ -1,9 +1,9 @@
 Store Structs and Arrays from C
 ===============================
 
-Numstore types have no padding. A struct is the sum of its members. A strict
-array is the product of its dimensions. So a C struct that you read into must
-be packed. If it is not packed, the padding of the compiler moves each field.
+Numstore types have no padding: a struct is the sum of its members and a strict
+array is the product of its dimensions. A C struct you read into must therefore
+be packed, or the compiler's padding will shift every field.
 
 ```c
 #include "numstore.h"
@@ -90,7 +90,7 @@ frame 1: timestamp=1001 pixels[0][0]=16 pixels[3][3]=31
 variable holds 2 elements
 ```
 
-The size is `8 + 4 x 4 = 24` bytes. Numstore and the packed struct agree on
-this size. Arrays are in C order. So `pixels[r][c]` matches element for
-element. [The type system](../concepts/types.md) gives the size rules for
-every type.
+`8 + 4 x 4 = 24` bytes, which is what both Numstore and the packed struct agree
+on. Arrays are stored in C order, so `pixels[r][c]` lines up element for
+element. The sizing rules for every type are in
+[the type system](../concepts/types.md).

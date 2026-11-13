@@ -1,17 +1,15 @@
 Handle Errors
 =============
 
-This guide shows how to find and report errors in C and in Python.
-[The error model](../concepts/errors.md) tells where Numstore keeps an error and
-who owns the message.
+How to catch and report a failure, in C and in Python. For where an error
+lives and who owns the message, see [the error model](../concepts/errors.md).
 
 Handle errors in C
 ------------------
 
-Numstore does not abort on a bad query. A function that returns a pointer
-returns `NULL`. A function that returns `int` returns a value that is not zero.
-A function that returns `sb_size` returns a negative number. Then call
-`ns_strerror` to get the message:
+Numstore never aborts on a bad query. Functions returning a pointer return
+`NULL`, functions returning `int` return non-zero, and functions returning
+`sb_size` return a negative number. `ns_strerror` then describes what happened:
 
 ```c
 #include "numstore.h"
@@ -65,20 +63,20 @@ read of a get: Only supported read commands are READ/REMOVE
 
 ### Report a failed open
 
-When `ns_open` fails, it gives no message. There is no database handle yet to
-ask. To report the cause, use `ns_open_with_error`. Set the buffer to zero
-first, because Numstore copies the message into it without a terminator.
+`ns_open` gives you no message when it fails, because there is no database
+handle yet to ask. Use `ns_open_with_error` when you need to report why, and
+zero the buffer first - the message is copied into it without a terminator.
 
 ### Continue after an error
 
-A failed query leaves no partial work. A query is atomic, with or without a
-transaction. The handle stays usable after the error. So you can report the
-error and continue.
+A failed query leaves no partial work behind - a query is atomic whether or not
+you handed it a transaction - and the handle stays usable afterwards, so you can
+report the error and carry on.
 
 ### Take the error of a transaction
 
-On a handle that other threads also use, take the error of your transaction
-with `ns_txn_strerror`. Set `copy` to `true` and release the string with `free`:
+On a handle that other threads share, take your transaction's error with
+`ns_txn_strerror`, ask for a copy, and release it with `free`:
 
 ```c
 if (ns_write (db, tx, src, sizeof (src), "insert foo 0 4") < 0) {
@@ -91,10 +89,10 @@ if (ns_write (db, tx, src, sizeof (src), "insert foo 0 4") < 0) {
 Handle errors in Python
 -----------------------
 
-Numstore gives standard Python exceptions.
-[The error model](../concepts/errors.md#errors-in-python) lists when each one
-occurs. The messages are for people to read. So it is usually enough to log the
-exception:
+Numstore reports failures as standard Python exceptions -
+[the error model](../concepts/errors.md#errors-in-python) lists which one you get
+when. The messages are written to be read, so logging the exception is usually
+enough:
 
 ```python
 >>> try:
@@ -104,9 +102,9 @@ exception:
 refused: cannot write float64 data to a uint32 variable
 ```
 
-Numstore rolls back a failed query. So when you catch an error in a
-transaction, the transaction stays usable. If the error goes out of the `with`
-block, Numstore rolls back the whole transaction:
+Because a failed query is rolled back, catching an error inside a transaction
+leaves the transaction usable - and if you let the error escape the `with`
+block, the whole transaction is rolled back:
 
 ```python
 >>> with db.begin() as txn:
@@ -119,4 +117,4 @@ block, Numstore rolls back the whole transaction:
 array([3, 1, 2], dtype=uint32)
 ```
 
-In these two examples, `counts` is a `u32` variable that holds `[1, 2]`.
+Both examples assume `counts` is a `u32` variable holding `[1, 2]`.

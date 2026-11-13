@@ -1,10 +1,8 @@
 Transactions
 ============
 
-This tutorial teaches transactions in Python. Do the
-[query language tutorial](language_tour.md) first.
-
-Each example is a real Python session. Type the examples in order.
+This picks up where [the query language tutorial](language_tour.md) left off.
+Everything below is a real Python session, so type the examples in order:
 
 ```python
 >>> import pynumstore as ns
@@ -14,16 +12,16 @@ Each example is a real Python session. Type the examples in order.
 Queries without a transaction
 -----------------------------
 
-In the query language tutorial, each operation ran by itself. When you do not
-name a transaction, each query gets an automatic transaction. The query happens
-fully or not at all. It is durable when the call returns.
+Every one of the operations in the query language tutorial ran on its own. When
+you don't name a transaction, each query gets an automatic one: it either
+happens completely or not at all, and it's durable by the time the call returns.
 
 Group queries
 -------------
 
-To make several operations into one atomic unit, open a transaction with
-`db.begin()`. Run the queries on the transaction, not on `db`. A `Transaction`
-has the same five query methods as a `Database`:
+To group several operations into one atomic unit, open a transaction with
+`db.begin()` and run the queries on it instead of on `db`. A `Transaction` has
+the same five query methods as a `Database`:
 
 ```python
 >>> db.execute("create prices f64")
@@ -42,8 +40,8 @@ array([1.5 , 2.25, 3.75])
 Roll back
 ---------
 
-In the transaction, `txn.read` sees the work of the transaction that is not
-committed. `rollback` discards all of that work:
+Inside the transaction, `txn.read` sees the transaction's own uncommitted work.
+`rollback` throws all of it away:
 
 ```python
 >>> txn = db.begin()
@@ -56,8 +54,8 @@ array([1.5 , 2.25, 3.75, 4.  , 5.  ])
 array([1.5 , 2.25, 3.75])
 ```
 
-A transaction ends when you commit it or roll it back. If you use it again, you
-get an error. Numstore does not ignore the call:
+A transaction is finished once you commit or roll it back, and using it again is
+an error rather than a silent no-op:
 
 ```python
 >>> txn
@@ -71,8 +69,8 @@ RuntimeError: transaction was already committed or rolled back
 Use the context manager
 -----------------------
 
-Usually, use the context manager. It commits when the block ends. It rolls back
-if the block raises an error:
+In practice you want the context manager, which commits when the block finishes
+and rolls back if it raises:
 
 ```python
 >>> with db.begin() as txn:
@@ -82,10 +80,10 @@ if the block raises an error:
 array([1.5 , 2.25, 3.75, 4.  , 5.  ])
 ```
 
-The `2` is the REPL output of `txn.write` in the block. It is the number of
-elements that the insert put in.
+That `2` is the REPL echoing the return value of `txn.write` from inside the
+block - the two elements it inserted.
 
-If the block raises an error, no data goes in:
+If the block raises, nothing lands:
 
 ```python
 >>> try:
@@ -103,13 +101,13 @@ array([1.5 , 2.25, 3.75, 4.  , 5.  ])
 One transaction at a time
 -------------------------
 
-One transaction is open at a time. `db.begin()` waits until the open
-transaction ends. So end each transaction before you start the next one. Then
-read [Transactions and concurrency](../concepts/transactions_and_concurrency.md)
-to learn why.
+One transaction is open at a time, and `db.begin()` waits for the open one to
+finish before it returns. So finish each transaction before you open the next
+one. [Transactions and concurrency](../concepts/transactions_and_concurrency.md)
+explains why.
 
 Next steps
 ----------
 
-* [Crash recovery](crash_recovery.md) - see what a commit keeps after a crash.
+* [Crash recovery](crash_recovery.md) - see what a commit survives.
 * [Use transactions in C](../howto/use_transactions_in_c.md).

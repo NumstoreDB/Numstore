@@ -154,7 +154,7 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
     mem.table->free (mem.self, ret);
     UNUSED (fpgr_close (fp, e));
     UNUSED (wal_close_and_delete (ww, e));
-    lockt_destroy (lt);
+    lockt_free (lt, mem);
     return NULL;
   }
 
@@ -163,7 +163,7 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
     mem.table->free (mem.self, ret);
     UNUSED (fpgr_close (fp, e));
     UNUSED (wal_close_and_delete (ww, e));
-    lockt_destroy (lt);
+    lockt_free (lt, mem);
     dpgt_close (dpt);
     return NULL;
   }
@@ -173,7 +173,7 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
     mem.table->free (mem.self, ret);
     UNUSED (fpgr_close (fp, e));
     UNUSED (wal_close_and_delete (ww, e));
-    lockt_destroy (lt);
+    lockt_free (lt, mem);
     dpgt_close (dpt);
     txnt_close (tnxt);
     return NULL;
@@ -204,7 +204,7 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
     mem.table->free (mem.self, ret);
     UNUSED (fpgr_close (fp, e));
     UNUSED (wal_close_and_delete (ww, e));
-    lockt_destroy (lt);
+    lockt_free (lt, mem);
     dpgt_close (dpt);
     txnt_close (tnxt);
     return NULL;

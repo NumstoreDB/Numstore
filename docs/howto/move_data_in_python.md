@@ -1,10 +1,10 @@
 Move Data In and Out from Python
 ================================
 
-The query selects *which* elements to touch. Python selects where the bytes
-come from and where they go.
+The query language says *which* elements to touch. The Python side decides where
+the bytes come from and go.
 
-Each example is a real Python session. Start with a database:
+Everything below is a real Python session. Start with a database:
 
 ```python
 >>> import numpy as np
@@ -15,8 +15,8 @@ Each example is a real Python session. Start with a database:
 Get data out
 ------------
 
-`db.read` allocates. It asks the variable for its dtype and shape. It makes an
-array of exactly that, and gives it to you:
+`db.read` allocates. It asks the variable for its dtype and shape, allocates an
+array of exactly that, and hands it to you:
 
 ```python
 >>> db.execute("create out u32")
@@ -26,9 +26,9 @@ array of exactly that, and gives it to you:
 array([1, 2, 3, 4], dtype=uint32)
 ```
 
-`db.read_into` does not allocate. You give the buffer. It fills as much of the
-buffer as it can. It returns the number of elements that it wrote. Use it to
-read a large variable in chunks, or to read into memory that you own:
+`db.read_into` doesn't allocate. You bring the buffer, it fills as much of it as
+it can and returns how many elements it wrote. That makes it the tool for
+reading a large variable in chunks, or for reading into memory you already own:
 
 ```python
 >>> buf = np.zeros(2, dtype=np.uint32)
@@ -38,9 +38,9 @@ read a large variable in chunks, or to read into memory that you own:
 array([1, 2], dtype=uint32)
 ```
 
-The buffer must match the type of the variable. `read_into` checks the dtype
-exactly. It does not convert, because its purpose is to write directly into
-your memory:
+The buffer has to actually fit the variable's type. `read_into` checks the dtype
+exactly - it won't convert on your behalf, because the whole point is to write
+straight into your memory:
 
 ```python
 >>> db.read_into("read out", np.zeros(4, dtype=np.float64))
@@ -53,14 +53,14 @@ Traceback (most recent call last):
 TypeError: out must be a numpy array, not list
 ```
 
-The buffer must also be C-contiguous and writable. So you cannot use most
-slices of another array.
+It must also be C-contiguous and writable, which rules out a non-trivial slice
+of someone else's array.
 
 Put data in
 -----------
 
-`db.write` accepts all data that numpy can change into an array. Lists, tuples
-and numpy arrays all work:
+`db.write` accepts anything numpy can turn into an array. Lists, tuples, and
+numpy arrays all work:
 
 ```python
 >>> db.execute("create inp f64")
@@ -74,9 +74,8 @@ and numpy arrays all work:
 array([1.5, 2.5, 3.5, 4.5, 5.5, 6.5])
 ```
 
-When you give a numpy array, Numstore checks its dtype. It permits only a cast
-of the same kind. So a cast that makes the type wider works. A cast that loses
-data fails:
+When you pass a numpy array, its dtype is checked and only a same-kind cast is
+allowed - so a widening cast goes through and a lossy one is refused:
 
 ```python
 >>> db.write("write inp", np.array([1.5, 2.5], dtype=np.float32))
@@ -88,8 +87,9 @@ Traceback (most recent call last):
 TypeError: cannot write float64 data to a uint32 variable
 ```
 
-A list does not get this check. It goes through `np.asarray(data, dtype)`, and
-numpy casts it as numpy decides. To prevent silent truncation, give an array:
+A plain list doesn't get that protection - it goes through
+`np.asarray(data, dtype)`, which casts however numpy sees fit. If you care about
+not silently truncating, pass an array:
 
 ```python
 >>> db.write("insert ints 0 2", [1.5, 2.5])
@@ -101,9 +101,9 @@ array([1, 2], dtype=uint32)
 Match the shape
 ---------------
 
-For a scalar variable, the data has one dimension. Only the number of elements
-is important. For a strict array variable, the last dimensions of the data must
-match the element type exactly. The first axis is the number of elements:
+For a scalar variable, the data is one-dimensional and only the element count
+matters. For a strict array variable, the trailing dimensions have to match the
+element type exactly, and the leading axis is the element count:
 
 ```python
 >>> db.execute("create rows [3] u32")
@@ -122,8 +122,8 @@ ValueError: out has shape (2, 2), expected (n, 3)
 Close the database
 ------------------
 
-When you are done, close the database. A query after that gives an error, not
-a crash:
+When you're done with the database, close it. Any query after that is an error
+rather than a crash:
 
 ```python
 >>> db.close()

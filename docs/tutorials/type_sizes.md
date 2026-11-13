@@ -1,8 +1,9 @@
 Type Sizes
 ==========
 
-This tutorial teaches you to calculate the size of a Numstore type. Read
-[The type system](../concepts/types.md) first. It gives the four size rules.
+Once you know how to size the 4 basic types, you can size any type in Numstore.
+If you haven't yet, read [the type system](../concepts/types.md) first - it
+walks through each rule.
 
 The size rules
 --------------
@@ -17,7 +18,7 @@ The size rules
 Practice problems
 -----------------
 
-Calculate each answer. Then use `ns.to_dtype(...).itemsize` to check it.
+`ns.to_dtype(...).itemsize` will check your answers.
 
 1. What is the element size of `struct { a u16, b i64, c f32 }`?
 2. What is the element size of `union { a u16, b i64, c f32 }`?
@@ -25,7 +26,7 @@ Calculate each answer. Then use `ns.to_dtype(...).itemsize` to check it.
 4. What is the element size of `[100] struct { x f32, y f32, z f32 }`?
 5. What is the element size of `struct { id u64, samples [8] cf64 }`?
 6. What is the element size of `[12][256][256] struct { r u8, g u8, b u8 }`?
-7. In a `[4][4] f32`, what is the byte offset of element `[2][3]`?
+7. In a `[4][4] f32`, what byte offset is element `[2][3]`?
 8. What is the element size of
    `struct { tag u8, payload union { a f64, b [2] u32 } }`?
 
@@ -35,14 +36,11 @@ Answers
 1. `2 + 8 + 4 = 14` bytes.
 2. `max(2, 8, 4) = 8` bytes.
 3. `10 x 20 x 4 = 800` bytes.
-4. The struct is `12`, so `100 x 12 = 1,200` bytes.
-5. `cf64` is 8 bytes. So `samples` is `8 x 8 = 64`. Add `id` at 8. The answer
-   is `72` bytes.
-6. The struct is `3`. The array is `12 x 256 x 256 = 786,432`. The answer is
-   `2,359,296` bytes.
+4. struct is `12`, so `100 x 12 = 1,200` bytes.
+5. `cf64` is 8 bytes -> `samples` is `8 x 8 = 64`, plus `id` at 8 -> `72` bytes.
+6. struct is `3`, array is `12 x 256 x 256 = 786,432` -> `2,359,296` bytes.
 7. `(2 x 4 + 3) x 4 = 11 x 4 = 44` bytes.
-8. The `union` is `max(8, 2 x 4) = 8`. Add `tag` at 1. The answer is `9`
-   bytes.
+8. `union` is `max(8, 2 x 4) = 8`, plus `tag` at 1 -> `9` bytes.
 
 Check the answers
 -----------------

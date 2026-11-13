@@ -1,10 +1,9 @@
 Use Transactions in C
 =====================
 
-`ns_begin` opens a transaction. Give it to each query in place of `NULL`. Then
-the queries are one atomic unit. `ns_commit` makes the work durable.
-`ns_rollback` discards the work. A read in the transaction sees the work of the
-transaction that is not committed:
+`ns_begin` opens a transaction; pass it where you were passing `NULL` and the
+queries become one atomic unit. `ns_commit` makes it durable, `ns_rollback`
+throws it away, and reads inside the transaction see its own uncommitted work:
 
 ```c
 #include "numstore.h"
@@ -76,7 +75,7 @@ after rollback: 1.5 2.25 3.75
 Rules
 -----
 
-* After you commit a `nsdb_txn_t *` or roll it back, you cannot use it again.
-* End each transaction that you open. `ns_close` waits while a transaction is
-  open. `ns_begin` waits while another transaction is open. See
+* A `nsdb_txn_t *` is spent once you commit or roll it back - don't reuse it.
+* Finish every transaction you open: `ns_close` blocks while one is still open,
+  and `ns_begin` blocks while another is still open. See
   [Transactions and concurrency](../concepts/transactions_and_concurrency.md).

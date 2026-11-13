@@ -1,8 +1,8 @@
 Numstore Documentation
 ======================
 
-Numstore is an ACID database for arrays. This page shows where each document
-is.
+Numstore is an ACID database for arrays. This page is a summary of the 
+Numstore docs.
 
 Start here
 ----------
@@ -14,7 +14,7 @@ Start here
 Tutorials
 ---------
 
-Tutorials teach. Do the steps in order.
+You learn best by doing.
 
 * [The query language](tutorials/language_tour.md) - make variables, then
   insert, write, read and remove data.
@@ -28,7 +28,7 @@ Tutorials teach. Do the steps in order.
 How-to guides
 -------------
 
-A how-to guide does one task.
+You want straight to the point information on how to use Numstore.
 
 * [Build and link the C library](howto/build_and_link.md)
 * [Handle errors](howto/handle_errors.md)
@@ -45,20 +45,10 @@ A how-to guide does one task.
 Concepts
 --------
 
-A concept page tells why Numstore works as it does.
+Numstore concepts and ideas
 
 * [Why Numstore](concepts/why_numstore.md)
 * [The type system](concepts/types.md)
 * [Transactions and concurrency](concepts/transactions_and_concurrency.md)
 * [Durability and crash recovery](concepts/durability.md)
 * [The error model](concepts/errors.md)
-
-Samples
--------
-
-Programs that you can run are in [`samples/`](../samples):
-[`sample1_basic.py`](../samples/sample1_basic.py),
-[`sample2_datatypes.py`](../samples/sample2_datatypes.py),
-[`sample3_transactions.py`](../samples/sample3_transactions.py),
-[`sample4_crash.py`](../samples/sample4_crash.py) and
-[`sample5_errors.py`](../samples/sample5_errors.py).

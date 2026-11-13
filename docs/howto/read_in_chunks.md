@@ -1,14 +1,14 @@
 Read a Large Variable in Chunks
 ===============================
 
-To read a large variable, read it in fixed size chunks into a buffer that you
-own. The size of the buffer limits each read. The return value is the number
-of elements that arrived.
+To walk a large variable, read it in fixed size chunks into a buffer you
+already own. The buffer size caps each read, and the return value tells you how
+many elements arrived.
 
 In C
 ----
 
-`ns_read` fills a buffer that you have. It never allocates:
+`ns_read` fills a buffer you already have. It never allocates:
 
 ```c
 #include "numstore.h"
@@ -62,7 +62,7 @@ read 100 elements in chunks of 16
 In Python
 ---------
 
-`read_into` fills a numpy array that you have. It never allocates:
+`read_into` is the same idea - you bring the numpy array, it never allocates:
 
 ```python
 >>> db.execute("create stream u32")

@@ -1,8 +1,10 @@
 The Query Language
 ==================
 
-This tutorial teaches the Numstore query language. It uses Python. The queries
-are the same in C.
+To get a better glimpse of what Numstore can do, it helps to understand the
+Numstore language, which is very self-contained and simple. Everything below is
+a real Python session, but the queries are identical in C - only the host
+language changes.
 
 * [Start a session](#start-a-session)
 * [The seven queries](#the-seven-queries)
@@ -21,8 +23,9 @@ are the same in C.
 Start a session
 ---------------
 
-Open a database. [Getting started](../GETTING_STARTED.md#open-a-database) tells
-more about this step:
+Open a database ([Getting started](../GETTING_STARTED.md#open-a-database) has
+the details). If you want to follow along, type the examples in order - each
+section builds on the one before it:
 
 ```python
 >>> import numpy as np
@@ -33,8 +36,8 @@ more about this step:
 The seven queries
 -----------------
 
-The query language of Numstore is small. It is not SQL. This is intentional. A
-Numstore database has seven operations:
+Numstore's query language is not SQL. This was a very intentional decision. A
+Numstore database has seven fundamental operations:
 
 1. `CREATE`
 2. `GET`
@@ -44,11 +47,13 @@ Numstore database has seven operations:
 6. `READ`
 7. `REMOVE`
 
-`CREATE`, `GET` and `DELETE` are _variable operations_. `INSERT`, `WRITE`,
-`READ` and `REMOVE` are _array operations_.
+You could put `CREATE`, `GET` and `DELETE` in their own category of _variable
+operations_ and `INSERT`, `WRITE`, `READ` and `REMOVE` in their own category of
+_array operations_.
 
-In Python, a query is a string. The method that you use depends on what the
-query moves across the boundary: nothing, metadata, data in or data out:
+From Python, a query is just a string. Which method you hand it to depends on
+what the query needs to move across the boundary - nothing, metadata, data in,
+or data out:
 
 | Method               | Queries it accepts         | Returns                        |
 | -------------------- | -------------------------- | ------------------------------ |
@@ -59,7 +64,7 @@ query moves across the boundary: nothing, metadata, data in or data out:
 | `db.read(q)`         | `READ` `REMOVE`            | a fresh `numpy` array          |
 | `db.read_into(q, o)` | `READ` `REMOVE`            | `int` - elements read into `o` |
 
-If you give a query to the wrong method, you get an error:
+Hand a query to the wrong method and you get an error rather than a surprise:
 
 ```python
 >>> db.execute("read foo")
@@ -68,7 +73,7 @@ Traceback (most recent call last):
 RuntimeError: Only supported exec commands are REMOVE/CREATE/DELETE
 ```
 
-A string that is not a query also gives an error:
+A query that isn't a query at all fails the same way:
 
 ```python
 >>> db.execute("not a real query")
@@ -80,10 +85,10 @@ RuntimeError: Expected a valid operation at pos: 0
 Variable operations
 -------------------
 
-A Numstore database maps "variables" to "arrays". That is why `CREATE`, `GET`
-and `DELETE` exist.
+`CREATE`, `GET` and `DELETE` exist because a Numstore database is really just a
+map of "variables" to "arrays".
 
-A Numstore database can look like this:
+A Numstore database may look like this:
 
 ```text
 "foo"  ->  [1, 2, 3, 4, 5, ...]
@@ -92,8 +97,9 @@ A Numstore database can look like this:
 ...
 ```
 
-To make a variable, run `CREATE`. `create` takes a name and a type. It returns
-nothing. So in the REPL, a `create` that works shows no output:
+To create new variables you execute the `CREATE` operation. `create` takes a
+name and a type, and returns nothing - so in the REPL a successful `create` is
+silent:
 
 ```python
 >>> db.execute("create foo u32")
@@ -101,16 +107,17 @@ nothing. So in the REPL, a `create` that works shows no output:
 >>> db.execute("create biz cf128")
 ```
 
-To see the data about a variable, run `GET`. `db.get` returns a `Var`. A `Var`
-is a frozen snapshot of the variable's metadata:
+You can get a variable's information by invoking the `GET` operation.
+`db.get` hands you back a `Var`, a frozen snapshot of the variable's metadata:
 
 ```python
 >>> db.get("get foo")
 Var(name='foo', type='u32', length=0, tsize=4)
 ```
 
-`get` also works for any query that contains a variable. The query does not
-run. So you read the variable only, not the data:
+You can also run get for any query that contains a variable in it
+(the query never runs - so you only ever read the variable, not
+the data)
 
 ```python
 >>> db.get("read foo[0:10]")
@@ -119,15 +126,15 @@ Var(name='foo', type='u32', length=0, tsize=4)
 Var(name='foo', type='u32', length=0, tsize=4)
 ```
 
-1. `name` is the name of the variable.
-2. `type` is the data type of the array. See
-   [The type system](../concepts/types.md).
-3. `length` is the number of elements in the array.
-4. `tsize` is the size in bytes of one element of the array `foo`. A `u32` is
-   4 bytes.
+1. `name` is the variable name
+2. `type` is the data type of the array - explained further in
+   [The type system](../concepts/types.md)
+3. `length` is the number of elements in the array
+4. `tsize` is the size in bytes of each element inside the array `foo` (a `u32`
+   is 4 bytes)
 
-A `Var` is a dataclass. The fields are attributes. A `Var` also has two
-properties that come from numpy:
+A `Var` is a dataclass, so the fields are just attributes, and it carries two
+numpy-shaped conveniences on top:
 
 ```python
 >>> var = db.get("get foo")
@@ -143,20 +150,20 @@ dtype('uint32')
 0
 ```
 
-`var.dtype` is the numpy dtype of one element. `var.shape` is the shape of an
-array that holds the whole variable. Here it is `(0,)`, because `foo` is empty.
-A `Var` is a snapshot, not a live view. It shows the state at the time that you
-asked.
+`var.dtype` is the numpy dtype one element maps to, and `var.shape` is the shape
+an array of the whole variable would have - here `(0,)`, because `foo` is still
+empty. A `Var` is a snapshot, not a live view: it keeps reporting what was true
+when you asked.
 
-You can run `CREATE` again with the same type. Then the variable and its data
-do not change:
+`CREATE` is idempotent as long as the type agrees. Re-creating a variable with
+the same type leaves it (and its data) alone:
 
 ```python
 >>> db.execute("create foo u32")
 ```
 
-If the name exists and the type is different, you get an error. Numstore does
-not replace the variable:
+Asking for a different type for a name that already exists is an error, not a
+silent replacement:
 
 ```python
 >>> db.execute("create foo f64")
@@ -165,7 +172,7 @@ Traceback (most recent call last):
 RuntimeError: Trying to create variable: foo but variable already exists and types are different
 ```
 
-To delete a variable, run `DELETE`:
+You can delete a variable by invoking the `DELETE` operation:
 
 ```python
 >>> db.execute("delete biz")
@@ -177,9 +184,9 @@ RuntimeError: Variable: biz doesn't exist
 
 ### Listing every variable
 
-`db.get_all` is `get` for the whole database. It takes no query. It returns one
-`Var` for each variable. Use it to find what is in a database file that you did
-not make. The order is not defined. Sort the list if you need a fixed order:
+`db.get_all` is `get` for the whole database: it takes no query and hands back
+one `Var` per variable. It's how you find out what's in a database file you
+didn't create. The order isn't specified, so sort if you need a stable list:
 
 ```python
 >>> sorted(v.name for v in db.get_all())
@@ -191,7 +198,7 @@ not make. The order is not defined. Sort the list if you need a fixed order:
 Array operations
 ----------------
 
-Each variable has one array. So first, make a variable:
+Each variable has one array. So first, you need to create a variable:
 
 ```python
 >>> db.execute("create data u32")
@@ -199,14 +206,15 @@ Each variable has one array. So first, make a variable:
 Var(name='data', type='u32', length=0, tsize=4)
 ```
 
-`INSERT` is the only way to _add_ data to an array, that is, to make the array
-longer. `WRITE` does not change the size of the array. It only replaces data.
-`INSERT` and `REMOVE` are the only operations that change the length.
+The only way to _add_ data to an array (e.g. increase the array size) is to
+`INSERT` data into the array. `WRITE` doesn't increase the array size, it only
+overwrites data. `INSERT` and `REMOVE` are the only length-modifying
+operations.
 
 ### INSERT
 
-To `INSERT` data, give the _offset_ where the data starts and the number of
-elements. The data is the second argument of `db.write`:
+To `INSERT` data, you specify what _offset_ to insert at and how many elements
+you're inserting. The data itself goes to `db.write` as the second argument:
 
 ```python
 >>> db.write("insert data 0 5", [1, 2, 3, 4, 5])
@@ -215,22 +223,22 @@ elements. The data is the second argument of `db.write`:
 array([1, 2, 3, 4, 5], dtype=uint32)
 ```
 
-An insert query has this form:
+The general form of an insert command looks like this:
 
 ```text
 insert <Variable Name> <Offset> <Count>
 ```
 
-* _Offset_ (`0` in the example above) is the index where the data goes. A
-  negative number counts back from the end of the array. `-1` is the last
-  index.
-* _Count_ (`5` in the example above) is the number of elements to insert. It
-  is a ceiling, not a promise. See [Count is a ceiling](#count-is-a-ceiling).
+* _Offset_ (`0` in the example above) is where to insert the data into the
+  array. Negative numbers count back from the end of the array, -1 being the
+  last index.
+* _Count_ (`5` in the example above) is how many elements to insert. It's a
+  ceiling, not a promise - see [Count is a ceiling](#count-is-a-ceiling).
 
-The return value is the number of elements that went in.
+The return value is the number of elements actually inserted.
 
-For example, an insert at index 2 of a 6 element array "pushes" data into
-index 2:
+For example, if we insert into a 6 element array at index 2, it's like we're
+"pushing" data into index 2:
 
 ```text
 insert foo 2 3   <- [7, 8, 9]
@@ -268,7 +276,7 @@ After:
   [1, 2, 3, 4, 5, 7, 8, 9, 6]
 ```
 
-Here are real inserts. `data` is `[1, 2, 3, 4, 5]` from above:
+And here it is for real. `data` is `[1, 2, 3, 4, 5]` from above:
 
 ```python
 >>> db.write("insert data 2 2", [7, 8])
@@ -281,8 +289,8 @@ array([1, 2, 7, 8, 3, 4, 5], dtype=uint32)
 array([1, 2, 7, 8, 3, 4, 9, 5], dtype=uint32)
 ```
 
-To append, use an offset equal to the length of the array. An offset past the
-end also appends, because offsets clamp:
+A true `append` is an offset equal to the length of the array - or any offset
+past it, because offsets clamp:
 
 ```python
 >>> v = db.get("get data")
@@ -294,9 +302,9 @@ array([ 1,  2,  7,  8,  3,  4,  9,  5, 10, 11], dtype=uint32)
 
 #### Count is a ceiling
 
-The _Count_ in the query and the length of the data can be different. `INSERT`
-pairs them. It stops when one of them ends. The return value tells you how
-many elements went in:
+The _Count_ in the query and the length of the data you pass don't have to
+agree. `INSERT` pairs them up and stops as soon as either one runs out, and the
+return value tells you how many elements actually landed:
 
 ```python
 >>> db.execute("create cap u32")
@@ -308,13 +316,13 @@ many elements went in:
 array([7, 8, 1, 2], dtype=uint32)
 ```
 
-The first call asked for 3 elements, but the data had only 2. The second call
-had 3 elements, but asked for only 2. So Numstore did not use the `9`.
+The first call asked for 3 but only had 2 elements to give. The second had 3
+elements but only asked for 2, so `9` was never consumed.
 
 ### WRITE
 
-`INSERT` makes the array longer. `WRITE` replaces data in its position. To
-write data, give the _range_ to change:
+While `INSERT` increases the array length, `WRITE` simply overwrites data in
+place. To write data, you specify the _range_ you wish to modify:
 
 ```python
 >>> db.execute("create w u32")
@@ -326,7 +334,7 @@ write data, give the _range_ to change:
 array([ 1,  2, 70, 80, 90,  6], dtype=uint32)
 ```
 
-A write query has this form:
+The general form of a write command looks like this:
 
 ```text
 write <Variable Name>[ "[" ( index
@@ -334,16 +342,19 @@ write <Variable Name>[ "[" ( index
       ) "]" ]
 ```
 
-Each part of the range is optional:
+Every part of the range is optional:
 
-* _start_ is the first index to write. The default is `0`. A negative number
-  counts back from the end of the array. `-1` is the last index.
-* _stop_ is the index to stop at. It is **exclusive**. The default is the
-  length of the array. A negative number counts back from the end.
-* _step_ is the distance between the indexes to write. The default is `1`. A
-  step of `0` is an error.
+* _start_ is the first index written to. If it isn't included, it defaults to
+  `0`. Negative numbers count back from the end of the array, -1 being the last
+  index.
+* _stop_ is the index to stop at, **exclusive**. If it isn't included, it
+  defaults to the length of the array. Negative numbers count back from the
+  end.
+* _step_ is the distance between written indexes. If it isn't included, it
+  defaults to `1`. A step of `0` is an error.
 
-If `w` is a 6 element array, these commands all cover the whole array:
+Assuming `w` is a 6 element array, the following commands all cover the whole
+thing:
 
 ```python
 >>> db.write("write w[0:6:1]", [1, 2, 3, 4, 5, 6])
@@ -356,7 +367,7 @@ If `w` is a 6 element array, these commands all cover the whole array:
 6
 ```
 
-No data moves. The array has the same length after the write:
+Nothing moves, and the array is the same length afterwards:
 
 ```text
 write foo[2:5]  <- [7, 8, 9]
@@ -368,10 +379,12 @@ After:
   [1, 2, 7, 8, 9, 6]
 ```
 
-Compare this with `insert foo 2 3`. The insert pushes the old data to the
-right, and you get a 9 element array. To make an array longer, use `INSERT`.
+Compare that to `insert foo 2 3`, which pushes the old data out of the way and
+leaves you with a 9 element array. If you want to grow an array, you want
+`INSERT`.
 
-A _step_ spreads the write across the array. The data is not contiguous:
+A _step_ spreads the write out over the array instead of laying it down
+contiguously:
 
 ```text
 write foo[0:6:2]  <- [7, 8, 9]
@@ -390,8 +403,8 @@ After:
 array([7, 2, 8, 4, 9, 6], dtype=uint32)
 ```
 
-A negative _step_ would go through the array backwards. Numstore does not
-support negative steps yet. They are a planned feature:
+A negative _step_ would walk the array backwards. Negative steps aren't
+supported yet but are a planned feature:
 
 ```python
 >>> db.write("write w[0:6:-2]", [7, 8, 9])
@@ -400,7 +413,7 @@ Traceback (most recent call last):
 RuntimeError: stride step must be positive
 ```
 
-The same check refuses a step of `0`:
+A step of `0` is rejected by the same check:
 
 ```python
 >>> db.write("write w[0:6:0]", [7, 8, 9])
@@ -409,10 +422,10 @@ Traceback (most recent call last):
 RuntimeError: stride step must be positive
 ```
 
-The range and the data can have different lengths. `WRITE` pairs them one
-element at a time. It stops when one of them ends. It returns the number of
-elements that it wrote. If the data ends first, the rest of the range does not
-change:
+The range and the data don't have to agree on length. `WRITE` pairs them up one
+element at a time and stops as soon as either one runs out, and returns how many
+elements it wrote. If the data runs out first, the rest of the range is left
+exactly as it was:
 
 ```python
 >>> db.write("write w", [1, 2, 3, 4, 5, 6])
@@ -423,7 +436,7 @@ change:
 array([70, 80,  3,  4,  5,  6], dtype=uint32)
 ```
 
-If the range ends first, Numstore does not use the rest of the data:
+And if the range runs out first, the remaining data is simply not consumed:
 
 ```python
 >>> db.write("write w[0:2]", [11, 12, 13, 14, 15])
@@ -432,8 +445,9 @@ If the range ends first, Numstore does not use the rest of the data:
 array([11, 12,  3,  4,  5,  6], dtype=uint32)
 ```
 
-An empty range is permitted. It writes nothing. A write to the range just after
-the end of an array is **not** an append. It does nothing and returns `0`:
+An empty range is legal and writes nothing. In particular, writing to the range
+just past the end of an array is **not** an `append`, it's a no-op that returns
+`0`:
 
 ```python
 >>> db.write("write w[6:]", [7, 8, 9])
@@ -444,9 +458,9 @@ array([11, 12,  3,  4,  5,  6], dtype=uint32)
 
 #### Ranges clamp
 
-Numstore does not check ranges like Python checks a list index. It clamps
-_start_ and _stop_ to the array. So a range that goes past one end covers less
-than you asked for:
+Ranges aren't bounds-checked the way an index into a Python list is. _start_ and
+_stop_ are clamped to the array, so a range that hangs off either end just
+covers less than you asked for:
 
 ```python
 >>> db.write("write w[0:100]", [21, 22])
@@ -459,9 +473,9 @@ array([31, 32,  3,  4,  5,  6], dtype=uint32)
 
 #### A bare index
 
-One number in the brackets, with no colon, is a bare index. It covers exactly
-one element. The colon makes a range open at the end. So `w[2]` and `w[2:]` are
-different:
+A single number in the brackets, with no colon, is a bare index: it covers
+exactly one element. The colon is what makes a range open ended, so `w[2]` and
+`w[2:]` are different things:
 
 ```python
 >>> db.read("read w[2]")
@@ -470,8 +484,9 @@ array([3], dtype=uint32)
 array([3, 4, 5, 6], dtype=uint32)
 ```
 
-`w[2]` and `w[2:3]` are the same. A bare index works in all positions where a
-range works. So use it to touch one element with any of the three operations:
+`w[2]` and `w[2:3]` are the same thing. A bare index works wherever a range
+does, so it's the way to touch a single element with any of the three
+operations:
 
 ```python
 >>> db.write("write w[2]", [70, 80, 90])
@@ -480,11 +495,11 @@ range works. So use it to touch one element with any of the three operations:
 array([31, 32, 70,  4,  5,  6], dtype=uint32)
 ```
 
-The write asked to put three elements, but the range had space for one. So only
-one went in. This is the pairing rule above.
+The write asked to lay down three elements but the range only had room for one,
+so only one landed - see the pairing rule above.
 
-A bare index counts from the end like any other index. It also clamps like any
-other index. So an index past the end is an empty range, not an error:
+A bare index counts from the end like any other, and clamps like any other, so
+an index past the end is an empty range rather than an error:
 
 ```python
 >>> db.read("read w[-1]")
@@ -495,7 +510,7 @@ array([6], dtype=uint32)
 
 ### READ
 
-To `READ` data, give the _range_ to read:
+To `READ` data, you specify the _range_ you wish to read:
 
 ```python
 >>> db.execute("create r u32")
@@ -505,7 +520,7 @@ To `READ` data, give the _range_ to read:
 array([3, 4, 5], dtype=uint32)
 ```
 
-A read query has this form:
+The general form of a read command looks like this:
 
 ```text
 read <Variable Name>[ "[" ( index
@@ -513,12 +528,12 @@ read <Variable Name>[ "[" ( index
      ) "]" ]
 ```
 
-`READ` uses ranges the same way as `WRITE`. See [WRITE](#write).
+`READ` has the same range semantics as `WRITE`. See [WRITE](#write).
 
-`WRITE` puts data into the range. `READ` takes data out of it. `db.read` makes a
-new numpy array with the correct dtype and shape, and gives it to you.
+Where `WRITE` puts data into the range, `READ` takes it out. `db.read` allocates
+a fresh numpy array of exactly the right dtype and shape and hands it to you.
 
-If `r` is a 6 element array, these commands do the same thing:
+Assuming `r` is a 6 element array, the following commands do the same thing:
 
 ```python
 >>> db.read("read r[0:6:1]")
@@ -531,7 +546,7 @@ array([1, 2, 3, 4, 5, 6], dtype=uint32)
 array([1, 2, 3, 4, 5, 6], dtype=uint32)
 ```
 
-A read never changes the array:
+Reading never modifies the array:
 
 ```text
 read foo[2:5]
@@ -544,7 +559,8 @@ After:
   [1, 2, 3, 4, 5, 6]
 ```
 
-A _step_ spreads the read across the array, as it spreads a write:
+A _step_ spreads the read out over the array, the same way it spreads out a
+write:
 
 ```text
 read foo[0:6:2]
@@ -560,15 +576,14 @@ Data:
 array([1, 3, 5], dtype=uint32)
 ```
 
-A negative number counts back from the end:
+Negative numbers count back from the end:
 
 ```python
 >>> db.read("read r[-3:]")
 array([4, 5, 6], dtype=uint32)
 ```
 
-Numstore does not support negative steps yet. So you cannot read an array
-backwards:
+Negative steps aren't supported yet, so you can't read an array backwards:
 
 ```python
 >>> db.read("read r[0:6:-2]")
@@ -577,9 +592,9 @@ Traceback (most recent call last):
 RuntimeError: stride step must be positive
 ```
 
-An empty range is permitted. But `db.read` has nothing to allocate for it, so it
-raises an error. To read "the data that is there, possibly nothing", use
-`db.read_into`. It returns `0`:
+An empty range is legal, but `db.read` has nothing to allocate for it and
+raises. If you want "read whatever is there, possibly nothing", use
+`db.read_into`, which reports `0`:
 
 ```python
 >>> db.read("read r[6:]")
@@ -590,7 +605,8 @@ RuntimeError: numstore operation failed
 0
 ```
 
-A read of a variable that has no data works. You get an empty array:
+Reading a variable that has no data at all is fine, though - you get an empty
+array back:
 
 ```python
 >>> db.execute("create empty u32")
@@ -600,7 +616,7 @@ array([], dtype=uint32)
 
 ### REMOVE
 
-To `REMOVE` data, give the _range_ to remove:
+To `REMOVE` data, you specify the _range_ you wish to remove:
 
 ```python
 >>> db.execute("create x u32")
@@ -611,7 +627,7 @@ To `REMOVE` data, give the _range_ to remove:
 array([1, 2, 6], dtype=uint32)
 ```
 
-A remove query has this form:
+The general form of a remove command looks like this:
 
 ```text
 remove <Variable Name>[ "[" ( index
@@ -619,15 +635,15 @@ remove <Variable Name>[ "[" ( index
        ) "]" ]
 ```
 
-`REMOVE` uses ranges the same way as `READ`. See [READ](#read).
+`REMOVE` has the same range semantics as `READ`. See [READ](#read).
 
-`REMOVE` is the opposite of `INSERT`. It is the only operation other than
-`INSERT` that changes the length of an array. Numstore takes out all of the
-elements in the range. The remaining elements close the gap.
+`REMOVE` is the other half of `INSERT`: it's the only operation besides `INSERT`
+that changes the length of an array. Everything the range covers is taken out
+and whatever is left closes the gap.
 
-`REMOVE` is the only operation that two methods accept. `db.execute` discards
-the removed data. `db.read` gives the removed data to you. So `db.read` with
-`remove` is a destructive read:
+`REMOVE` is the one operation that answers to two methods. `db.execute` throws
+the removed data away; `db.read` hands it back to you on the way out, which
+makes it a destructive read:
 
 ```python
 >>> db.write("insert x 0 3", [7, 8, 9])
@@ -640,8 +656,8 @@ array([7, 8], dtype=uint32)
 array([9, 1, 2, 6], dtype=uint32)
 ```
 
-With both methods, the length of the variable follows the data. So `get` after
-a remove shows what is left:
+Either way the variable's length follows the data, so `get` after a remove
+reports what's actually left:
 
 ```python
 >>> db.get("get x")
@@ -653,8 +669,8 @@ Var(name='x', type='u32', length=3, tsize=4)
 array([1, 2, 6], dtype=uint32)
 ```
 
-For example, a remove of the range `2:5` from a 6 element array takes out three
-elements. A 3 element array stays:
+For example, removing the range `2:5` from a 6 element array takes out three
+elements and leaves a 3 element array behind:
 
 ```text
 remove foo[2:5]
@@ -665,8 +681,8 @@ After:
   [1, 2, 6]
 ```
 
-A _step_ makes holes in the array. It does not take out one contiguous block.
-The array still closes up after the remove:
+A _step_ punches holes in the array instead of taking out one contiguous block.
+The array still closes up afterwards:
 
 ```text
 remove foo[0:6:2]
@@ -683,8 +699,9 @@ After:
 array([2], dtype=uint32)
 ```
 
-All parts of the range are optional. So these commands all remove all of the
-data. The variable becomes empty, but it stays. You get an array of length 0:
+Because the whole range is optional, the following commands all remove
+everything. This empties the variable out, it doesn't get rid of the variable
+itself - you're left with an array of length 0:
 
 ```text
 remove foo
@@ -701,7 +718,7 @@ After:
 array([], dtype=uint32)
 ```
 
-An empty range is permitted. It removes nothing:
+An empty range is legal and removes nothing:
 
 ```python
 >>> db.write("insert x 0 3", [1, 2, 3])
@@ -714,6 +731,6 @@ array([1, 2, 3], dtype=uint32)
 Next steps
 ----------
 
-* [Transactions](transactions.md) - group these queries into one unit.
-* [Type sizes](type_sizes.md) - use types other than scalars.
+* [Transactions](transactions.md) - group these queries into one atomic unit.
+* [Type sizes](type_sizes.md) - go beyond arrays of scalars.
 * [Move data in and out from Python](../howto/move_data_in_python.md).

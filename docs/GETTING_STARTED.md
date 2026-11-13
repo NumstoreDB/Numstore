@@ -1,8 +1,8 @@
 Getting Started
 ===============
 
-This page shows how to install Numstore and run your first queries. Use Python
-or C. The queries are the same in the two languages.
+Install Numstore and run your first queries, from Python or C. The queries are
+identical in both - only the host language changes.
 
 * [Python](#python)
 * [C](#c)
@@ -20,12 +20,12 @@ Install the bindings:
 pip install pynumstore
 ```
 
-Numpy is the only dependency. It comes with the wheel.
+Numpy is the only dependency. 
 
 A first round trip
 ------------------
 
-This example makes a variable, inserts data and reads the data back:
+Create a variable, insert some data, read it back:
 
 ```python
 >>> import numpy as np
@@ -41,8 +41,7 @@ array([1.5 , 2.25, 3.75])
 Open a database
 ---------------
 
-A Numstore database is one file. There is no server to start. Open the
-database:
+A Numstore database is a single file. Open one:
 
 ```python
 >>> import numpy as np
@@ -54,12 +53,11 @@ database:
 'tour.db'
 ```
 
-`Database` is a context manager. In a script, write
-`with ns.Database("tour.db") as db:`. The block closes the database when it
-ends. In the REPL, keep `db` open. Call `db.close()` when you are done.
+`Database` is a context manager, so in a script you'd normally write
+`with ns.Database("tour.db") as db:` and let the block close it. In the REPL
+it's easier to keep `db` around and call `db.close()` when you're done.
 
-The [query language tutorial](tutorials/language_tour.md) starts from this
-point.
+The [query language tutorial](tutorials/language_tour.md) picks up from here.
 
 C
 =
@@ -67,7 +65,7 @@ C
 Build the library
 -----------------
 
-Get the source and build it:
+Build the library out of the repository:
 
 ```sh
 git clone https://github.com/NumstoreDB/Numstore
@@ -82,8 +80,8 @@ To compile and link your program, see
 A first program
 ---------------
 
-This program opens a database, makes a variable, inserts data and reads the
-data back. A Numstore database is one file. There is no server to start:
+Open a database, create a variable, insert data, read it back. A Numstore
+database is a single file and there is no server to start:
 
 ```c
 #include "numstore.h"
@@ -141,27 +139,27 @@ inserted 3 elements
 read 3 elements: 1.5 2.25 3.75
 ```
 
-Three rules for every C example
--------------------------------
+Three things carry across every C example
+------------------------------------------
 
-* **The second argument is the transaction.** If it is `NULL`, the query gets
-  its own automatic transaction. The query is atomic, and it is durable when
-  the call returns. To group queries, see
-  [Use transactions in C](howto/use_transactions_in_c.md).
-* **Queries are `printf` format strings.** `ns_execute`, `ns_read`,
-  `ns_write`, `ns_get_var` and `ns_plan_fcreate` are variadic. So an offset or
-  a count can come from a variable:
+* **The `NULL` second argument is the transaction.** Pass `NULL` and the query
+  gets an automatic transaction of its own - atomic and durable by the time the
+  call returns. See [Use transactions in C](howto/use_transactions_in_c.md) to
+  group queries instead.
+* **Queries are `printf` format strings.** `ns_execute`, `ns_read`, `ns_write`,
+  `ns_get_var` and `ns_plan_fcreate` are variadic, so an offset or a count can
+  come from a variable:
   `ns_write (db, NULL, src, sizeof (src), "insert prices %d %d", offset, count)`.
-* **Buffer sizes are in bytes. Counts in queries are in elements.**
-  `sizeof (out)` tells Numstore how much space it has. `read prices[0:]` tells
-  it which elements to read. The return value is the number of **elements**
-  that moved. A read stops when the range or the buffer ends.
+* **Buffer sizes are bytes, query counts are elements.** `sizeof (out)` tells
+  Numstore how much room it has; `read prices[0:]` says which elements you want.
+  The return value is the number of **elements** moved, and reads stop when
+  either the range or the buffer runs out.
 
 Which function to call
 ----------------------
 
-The function to call depends on what goes across the boundary: nothing,
-metadata, data in or data out:
+Which function you call depends on what has to cross the boundary - nothing,
+metadata, data in, or data out:
 
 | Function                                 | Queries it accepts         | Returns                                        |
 | ---------------------------------------- | -------------------------- | ---------------------------------------------- |
@@ -176,4 +174,4 @@ Next steps
 
 * [The query language](tutorials/language_tour.md) - the seven queries, step
   by step.
-* [Glossary](GLOSSARY.md) - the words that these documents use.
+* [Glossary](GLOSSARY.md) - the vocabulary used throughout the docs.

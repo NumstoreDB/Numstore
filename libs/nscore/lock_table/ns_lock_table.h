@@ -58,6 +58,14 @@ lockt_create (struct i_mem mem, struct i_os os, error *e)
   return lt;
 }
 
+// Undoes lockt_create: destroys the table and frees the struct itself
+HEADER_FUNC void
+lockt_free (struct lockt *lt, struct i_mem mem)
+{
+  lockt_destroy (lt);
+  mem.table->free (mem.self, lt);
+}
+
 ///////////////////////
 ///// Utilities
 void i_log_lockt (int log_level, struct lockt *t);
