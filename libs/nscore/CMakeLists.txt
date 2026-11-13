@@ -6,6 +6,4 @@ add_subdirectory(wal)
 add_subdirectory(recovery)
 
 ns_add_library(ns_nscore ${NS_NSCORE_SRCS})
-target_link_libraries(
-    ns_nscore PUBLIC ns_disk_pager ns_disk_wal ns_page
-)
+target_link_libraries(ns_nscore PUBLIC ns_disk_pager ns_disk_wal ns_page)
