@@ -1,7 +1,7 @@
 Numstore
 ========
 
-**An embedded ACID database for Numpy arrays.**
+**An embedded ACID database for arrays.**
 
 Features:
 ---------
@@ -11,8 +11,8 @@ Features:
   all, even if the process crashes partway through. Transactions are strictly
   serializable - one is open at a time - and crash recovery uses ARIES over a
   unique rope variant of the B+Tree to index into arrays. Concurrent readers and
-  writers are in development the infrastructure (guarded under the 
-  `EXPERIMENTAL_HIERARCHIAL_TXNS` feature flag).
+  writers are in development (guarded under the `EXPERIMENTAL_HIERARCHIAL_TXNS` 
+  feature flag).
 - **Arrays.** Numstore stores images, sensor streams, tick data and any fixed
   layout of numbers you can describe as a type.
 - **No dependencies.** Written in C11 with first class Python bindings that
