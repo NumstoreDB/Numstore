@@ -1,16 +1,15 @@
 mod errors;
 mod numstore;
 
+pub use errors::{Error, ErrorType, Result};
+
 use std::ptr::NonNull;
 
-use crate::{
-    errors::Result,
-    numstore::{
-        b_size, nsdb_plan_t, nsdb_t, nsdb_txn_t, nsdb_var_t, rs_ns_begin, rs_ns_cleanup,
-        rs_ns_close, rs_ns_commit, rs_ns_open, rs_ns_plan_create, rs_ns_plan_execute,
-        rs_ns_plan_free, rs_ns_plan_get_var, rs_ns_plan_malloc, rs_ns_plan_read, rs_ns_plan_write,
-        rs_ns_rollback, rs_ns_var_free, rs_ns_var_len, CBuf,
-    },
+use crate::numstore::{
+    b_size, nsdb_plan_t, nsdb_t, nsdb_txn_t, nsdb_var_t, rs_ns_begin, rs_ns_cleanup, rs_ns_close,
+    rs_ns_commit, rs_ns_open, rs_ns_plan_create, rs_ns_plan_execute, rs_ns_plan_free,
+    rs_ns_plan_get_var, rs_ns_plan_malloc, rs_ns_plan_read, rs_ns_plan_write, rs_ns_rollback,
+    rs_ns_var_free, rs_ns_var_len, CBuf,
 };
 
 pub struct Database {

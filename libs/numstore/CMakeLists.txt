@@ -49,3 +49,18 @@ install(
         ${CMAKE_CURRENT_BINARY_DIR}/numstoreConfigVersion.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/numstore
 )
+
+# pkg-config: cc main.c $(pkg-config --cflags --libs numstore)
+# The libraries stay in link order, so a consumer does not list them
+if(UNIX AND NOT APPLE)
+    set(NS_PC_SYSTEM_LIBS "-pthread -lm")
+endif()
+configure_file(
+    ${PROJECT_SOURCE_DIR}/cmake/numstore.pc.in
+    ${CMAKE_CURRENT_BINARY_DIR}/numstore.pc
+    @ONLY
+)
+install(
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/numstore.pc
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+)

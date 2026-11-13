@@ -56,12 +56,19 @@ creates a database file in your current directory.
 
 Next steps:
 
-* [**Documentation**](docs/index.md) - the guided tour: the query language, the
-  type system, transactions and durability, all in Python.
-* [**Python API Reference**](docs/python_api.md) - every class and method in
-  `pynumstore`.
-* [**C API Reference**](docs/c_api.md) - `numstore.h`, linking, and a complete
-  program per operation. Also see the [C Quick Start](#c-quick-start) below.
+* [**Getting started**](docs/GETTING_STARTED.md) - install Numstore and run
+  your first queries in Python or C.
+* [**Tutorials**](docs/index.md#tutorials) - the query language, transactions,
+  type sizes and crash recovery, step by step.
+* [**How-to guides**](docs/index.md#how-to-guides) - one task on each page:
+  build and link, handle errors, read in chunks, smart files, backups.
+* [**Concepts**](docs/index.md#concepts) - why Numstore exists, the type
+  system, transactions and concurrency, durability and errors.
+* [**Python API Reference**](docs/reference/python_api.md) - every class and
+  method in `pynumstore`.
+* [**C API Reference**](docs/reference/c_api.md) - every function, type and
+  constant in `numstore.h`. Also see the [C Quick Start](#c-quick-start) below.
+* [**Glossary**](docs/GLOSSARY.md) - the words that the documents use.
 
 Why Numstore?
 -------------
@@ -124,7 +131,7 @@ They nest freely: `struct { a u32, b struct { c f16, d [10]f32 } }` is 4 + 2 +
 40 = 46 bytes.
 
 The full rules for sizing and nesting types are in
-[the type system](docs/index.md#the-numstore-type-system).
+[the type system](docs/concepts/types.md).
 
 C Quick Start
 -------------
@@ -146,20 +153,20 @@ What you get:
 To compile a program of your own against it:
 
 ```sh
-L=build/release/lib
-cc -std=c11 -I libs/numstore/include myprog.c \
-    $L/libns_numstore.a $L/libns_nsdb.a $L/libns_algorithms.a \
-    $L/libns_nscore.a $L/libns_disk_wal.a $L/libns_disk_pager.a \
-    $L/libns_types.a $L/libns_page.a $L/libns_common.a -o myprog
+cmake --install build/release --prefix "$HOME/.local"
+export PKG_CONFIG_PATH="$HOME/.local/lib/pkgconfig"
+cc -std=c11 myprog.c $(pkg-config --cflags --libs numstore) -o myprog
 ```
 
-The archives are listed so that each one comes before the ones it depends on,
-which is the order a GNU linker needs. On Linux add `-pthread -lm`. For a debug
-build, use `-B build/debug -DCMAKE_BUILD_TYPE=Debug` instead.
+The install puts the header, the nine archives and `numstore.pc` under the
+prefix. `pkg-config` gives the include path and the archives in link order, and
+`-pthread -lm` on Linux. For a debug build, use
+`-B build/debug -DCMAKE_BUILD_TYPE=Debug` instead.
 
-The [C API Reference](docs/c_api.md) has the rest: linking from CMake, and a
-complete program for queries, transactions, crash recovery, packed structs,
-prepared plans and smart files.
+[Build and link](docs/howto/build_and_link.md) shows how to link from CMake. The
+[how-to guides](docs/index.md#how-to-guides) have a complete program for
+queries, transactions, crash recovery, packed structs, prepared plans and smart
+files.
 
 Developing
 ----------

@@ -1,0 +1,9 @@
+prefix=${pcfiledir}/../..
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: numstore
+Description: An ACID database for arrays
+Version: @PROJECT_VERSION@
+Cflags: -I${includedir}
+Libs: -L${libdir} -lns_numstore -lns_nsdb -lns_algorithms -lns_nscore -lns_disk_wal -lns_disk_pager -lns_types -lns_page -lns_common @NS_PC_SYSTEM_LIBS@

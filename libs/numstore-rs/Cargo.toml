@@ -6,7 +6,7 @@ license.workspace = true
 
 [lib]
 name = "numstore_rs"
-crate-type = ["staticlib"]
+crate-type = ["staticlib", "rlib"]
 
 [build-dependencies]
 bindgen = "0.71.0"

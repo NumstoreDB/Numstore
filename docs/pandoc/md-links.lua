@@ -1,16 +1,5 @@
--- Rewrite [text](foo.md) -> [text](foo.html), and fix up any link written
--- relative to the docs/ root so it resolves correctly no matter how deep
--- the current file is nested (e.g. docs/man/man1/foo.1.md).
-
--- Path of the CURRENT source file, relative to docs/, e.g. "man/man1/foo.1.md"
-local src_rel = os.getenv("PANDOC_SRC_REL") or ""
-
--- How many directories deep is the current file (not counting the filename)?
-local depth = 0
-for _ in src_rel:gmatch("[^/]+/") do
-    depth = depth + 1
-end
-local up_prefix = string.rep("../", depth)
+-- Rewrite [text](foo.md) -> [text](foo.html). Links are relative to the
+-- file that holds them, so only the extension changes.
 
 function Link(el)
     local target = el.target
@@ -28,8 +17,7 @@ function Link(el)
     local path, suffix = target:match("^([^#?]*)(.*)$")
 
     if path and path:match("%.md$") then
-        local html_path = path:gsub("%.md$", ".html")
-        el.target = up_prefix .. html_path .. suffix
+        el.target = path:gsub("%.md$", ".html") .. suffix
         return el
     end
 
