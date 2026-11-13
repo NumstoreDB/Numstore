@@ -30,7 +30,7 @@ sb_size numstore_insert_from_name (
     struct pager       *p,
     struct txn         *tx,
     struct string       vname,  // Name of the variable
-    b_size              ofst,   // Offset (in elements)
+    sb_size             ofst,   // Offset (in elements)
     b_size              len,    // Length of the data
     struct arena_alloc *valloc, // Where to allocate the variable
     struct variable    *var,    // If not null - save the variable
@@ -44,7 +44,7 @@ sb_size numstore_insert (
     struct pager    *p,
     struct txn      *tx,
     struct variable *var,
-    b_size           ofst,
+    sb_size          ofst,
     b_size           len,
     struct stream   *src,
     error           *e

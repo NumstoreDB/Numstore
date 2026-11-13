@@ -13,10 +13,9 @@
 /// limitations under the License.
 
 #include "dpg_table/ns_dirty_page_table.h"
-#include "lock_table/ns_lock_table.h"
 #include "ns_error.h"
 #include "ns_testing.h"
-#include "pager/ns_pager.h"
+#include "recovery/ns_pager_recovery.h"
 #include "txn_table/ns_txn_table.h"
 
 err_t

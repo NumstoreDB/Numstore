@@ -17,15 +17,9 @@
 #include "ns_file_pager.h"
 #include "ns_logging.h"
 #include "ns_utils.h"
-#include "pager/ns_page_fixture.h"
 #include "pager/ns_pager.h"
+#include "recovery/ns_pager_recovery.h"
 #include "wal/ns_wal.h"
-
-#include <limits.h>
-#include <stdatomic.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 /**
  * WAL Existence based recovery. This is tricky logic and should be carefully

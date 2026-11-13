@@ -16,8 +16,8 @@
 #include "ns_csx_assert.h"
 #include "ns_error.h"
 #include "ns_stdtypes.h"
-#include "pager/ns_page_fixture.h"
 #include "pager/ns_pager.h"
+#include "recovery/ns_pager_recovery.h"
 #include "wal/ns_wal.h"
 
 struct redo_ctx

@@ -27,12 +27,6 @@
 
 struct string;
 
-/******************************************************************************
- * SECTION: Hash Table Models
- * ----------------------------------------------------------------------------
- * @brief A hash table has insert and access results
- ******************************************************************************/
-
 typedef enum
 {
   HTIR_SUCCESS,
@@ -46,24 +40,7 @@ typedef enum
   HTAR_DOESNT_EXIST,
 } hta_res;
 
-/******************************************************************************
- * SECTION: Hashing utilities and functions
- * ----------------------------------------------------------------------------
- * @brief Hash functions
- ******************************************************************************/
-
 u32 fnv1a_hash (struct string s);
-
-/******************************************************************************
- * SECTION: Hash Table
- * ----------------------------------------------------------------------------
- * @brief An intrusive hash table
- *
- * This hash table uses intrusive data structures to keep track of nodes
- *
- * TODO: add a usage example (embed an llnode in the user struct, then
- * container_of back to it) so callers don't have to read the tests.
- ******************************************************************************/
 
 struct hnode
 {
@@ -90,12 +67,22 @@ struct htable
 struct htable *htable_create (u32 n, struct i_mem mem, error *e);
 void htable_free (struct htable *t);
 
+typedef bool (*hnode_eq) (const struct hnode *, const struct hnode *);
+typedef void (*hnode_update) (struct hnode *, void *ctx);
+typedef struct hnode *(*hnode_new) (void *ctx, error *e);
+
 void htable_insert (struct htable *t, struct hnode *node);
-struct hnode **htable_lookup (
-    struct htable      *t,
-    const struct hnode *key,
-    bool (*eq) (const struct hnode *, const struct hnode *)
+err_t htable_upsert (
+    struct htable *t,
+    struct hnode  *key,
+    void          *ctx,
+    hnode_eq       eq,
+    hnode_update   update,
+    hnode_new      newnode,
+    error         *e
 );
+
+struct hnode **htable_lookup (struct htable *t, const struct hnode *key, hnode_eq eq);
 struct hnode *htable_delete (struct htable *t, struct hnode **from);
 struct hnode **htable_random (struct htable *t);
 

@@ -28,7 +28,8 @@ Checks: >
   -readability-non-const-parameter,
   -readability-avoid-const-params-in-decls,
   -readability-function-cognitive-complexity,
-  -readability-trailing-comma
+  -readability-trailing-comma,
+  -misc-use-internal-linkage
 
 # Empty while you clean up existing findings. For CI, switch to
 # 'bugprone-*,clang-analyzer-*' once the codebase is clean.

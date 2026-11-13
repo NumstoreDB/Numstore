@@ -16,12 +16,11 @@
 #include "lock_table/ns_lock_table.h"
 #include "ns_error.h"
 #include "ns_file_pager.h"
-#include "ns_logging.h"
 #include "ns_utils.h"
 #include "os/ns_malloc.h"
 #include "os/ns_os.h"
-#include "pager/ns_page_fixture.h"
 #include "pager/ns_pager.h"
+#include "recovery/ns_pager_recovery.h"
 #include "txn_table/ns_txn_table.h"
 #include "wal/ns_wal.h"
 
@@ -50,11 +49,36 @@ pgr_delete_single_file (const char *dbname, const struct i_os os, error *e)
   return error_trace (e);
 }
 
-/******************************************************************************
- * SECTION: pgr_open
- * ----------------------------------------------------------------------------
- * @brief Open a new pager
- ******************************************************************************/
+static inline err_t
+pgr_init (struct pager *p, error *e)
+{
+  if (atomic_load (&p->flags) & PGR_ISNEW) {
+    // Reset any data in the file pager
+    if (fpgr_reset (p->fp, e) < 0) {
+      return error_trace (e);
+    }
+
+    // Write out the starting header
+    memset (&p->header, 0, sizeof p->header);
+    if (pgr_write_header (p, e) < 0) {
+      return error_trace (e);
+    }
+
+    if (wal_delete_and_reopen (p->ww, e) < 0) {
+      return error_trace (e);
+    }
+
+    if (wal_write_start_lsn (p->ww, 0, e) < 0) {
+      return error_trace (e);
+    }
+  } else {
+    if (pgr_detect_wal_and_recover (p, e) < 0) {
+      return error_trace (e);
+    }
+  }
+
+  return SUCCESS;
+}
 
 /*
  * pgr_open - standard file-backed entry point.
@@ -76,6 +100,8 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
   // terminator. pgr_delete_single_file above uses the same buffers.
   // strnlen stops at NS_PATH_MAX, which is already over the limit.
   size_t len = strnlen (dbname, NS_PATH_MAX);
+
+  ASSERT (NS_PATH_MAX >= 5);
   if (len > (NS_PATH_MAX - 5)) {
     error_causef (
         e,
@@ -92,121 +118,99 @@ pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e)
   snprintf (fname, sizeof fname, "%s", dbname);
   snprintf (walname, sizeof walname, "%s.wal", dbname);
 
+  // Allocate pager
+  struct pager *ret = mem.table->calloc (mem.self, 1, sizeof *ret, e);
+  if (ret == NULL) {
+    return NULL;
+  }
+
+  // Open a file pager
   struct file_pager *fp = fpgr_open (fname, mem, os, PAGE_HEADER_LEN, e);
   if (fp == NULL) {
+    mem.table->free (mem.self, ret);
     return NULL;
   }
 
+  // Open the WAL
   struct wal *ww = wal_open (walname, mem, os, e);
-  // The cleanup calls below run after a failure already in [e], so their own
-  // failures add nothing the caller can act on.
   if (ww == NULL) {
-    (void)fpgr_close (fp, e);
+    mem.table->free (mem.self, ret);
+    UNUSED (fpgr_close (fp, e));
     return NULL;
   }
 
-  struct lockt *lt = mem.table->malloc (mem.self, 1, sizeof *lt, e);
+  // Open the lock table
+  struct lockt *lt = lockt_create (mem, os, e);
   if (lt == NULL) {
-    (void)fpgr_close (fp, e);
-    (void)wal_close_and_delete (ww, e);
-    return NULL;
-  }
-  if (lockt_init (lt, mem, os, e) < 0) {
-    (void)fpgr_close (fp, e);
-    (void)wal_close_and_delete (ww, e);
-    mem.table->free (mem.self, lt);
+    mem.table->free (mem.self, ret);
+    UNUSED (fpgr_close (fp, e));
+    UNUSED (wal_close_and_delete (ww, e));
     return NULL;
   }
 
-  page_h        root = page_h_create ();
-  struct pager *ret  = NULL;
-
-  ret                = mem.table->calloc (mem.self, 1, sizeof *ret, e);
-  if (ret == NULL) {
-    goto failed;
+  // Open dirty page table
+  struct dpg_table *dpt = dpgt_open (mem, e);
+  if (dpt == NULL) {
+    mem.table->free (mem.self, ret);
+    UNUSED (fpgr_close (fp, e));
+    UNUSED (wal_close_and_delete (ww, e));
+    lockt_destroy (lt);
+    return NULL;
   }
 
-  // Initialize "easy" things
-  ret->mem                        = mem;
-  ret->os                         = os;
-  *(struct file_pager **)&ret->fp = fp;
-  *(struct wal **)&ret->ww        = ww;
-  ret->lt                         = lt;
-  atomic_store (&ret->flags, fpgr_isnew (ret->fp));
-  atomic_store (&ret->clock, 0);
-  ht_init_idx (&ret->pgno_to_value, ret->_hdata, MEMORY_PAGE_LEN);
-  latch_init (&ret->htable_lock);
-  latch_init (&ret->pgrnew_lock);
-
-  *(struct dpg_table **)&ret->dpt = dpgt_open (mem, e);
-  if (ret->dpt == NULL) {
-    goto failed;
-  }
-
-  *(struct txn_table **)&ret->tnxt = txnt_open (mem, e);
-  if (ret->tnxt == NULL) {
-    goto failed;
+  struct txn_table *tnxt = txnt_open (mem, e);
+  if (tnxt == NULL) {
+    mem.table->free (mem.self, ret);
+    UNUSED (fpgr_close (fp, e));
+    UNUSED (wal_close_and_delete (ww, e));
+    lockt_destroy (lt);
+    dpgt_close (dpt);
+    return NULL;
   }
 
   // Initialize (but don't start) the checkpoint task
   if (periodic_task_init (&ret->checkpoint_task, os, e) < 0) {
-    goto failed;
+    mem.table->free (mem.self, ret);
+    UNUSED (fpgr_close (fp, e));
+    UNUSED (wal_close_and_delete (ww, e));
+    lockt_destroy (lt);
+    dpgt_close (dpt);
+    txnt_close (tnxt);
+    return NULL;
   }
 
-  atomic_store (&ret->next_tid, 0);
+  // Initialize simple things
+  ret->mem      = mem;
+  ret->os       = os;
 
-  if (atomic_load (&ret->flags) & PGR_ISNEW) {
-    // Reset any data in the file pager
-    if (fpgr_reset (ret->fp, e) < 0) {
-      goto failed;
-    }
+  ret->fp       = fp;
+  ret->ww       = ww;
+  ret->lt       = lt;
+  ret->dpt      = dpt;
+  ret->tnxt     = tnxt;
 
-    // Write out the starting header
-    memset (&ret->header, 0, sizeof ret->header);
-    if (pgr_write_header (ret, e) < 0) {
-      goto failed;
-    }
+  ret->flags    = 0 | (fpgr_isnew (ret->fp) ? PGR_ISNEW : 0);
+  ret->clock    = 0;
+  ret->next_tid = 0;
 
-    if (wal_delete_and_reopen (ret->ww, e) < 0) {
-      goto failed;
-    }
+  latch_init (&ret->pgrnew_lock);
+  latch_init (&ret->htable_lock);
 
-    if (wal_write_start_lsn (ret->ww, 0, e) < 0) {
-      goto failed;
-    }
-  } else {
-    if (pgr_detect_wal_and_recover (ret, e) < 0) {
-      goto failed;
-    }
+  ht_init_idx (&ret->pgno_to_value, ret->_hdata, MEMORY_PAGE_LEN);
+
+  // Do pager initialization (recovery happens here)
+  if (pgr_init (ret, e) < 0) {
+    ASSERT (error_trace (e) < 0);
+    mem.table->free (mem.self, ret);
+    UNUSED (fpgr_close (fp, e));
+    UNUSED (wal_close_and_delete (ww, e));
+    lockt_destroy (lt);
+    dpgt_close (dpt);
+    txnt_close (tnxt);
+    return NULL;
   }
 
   return ret;
-
-failed:
-  ASSERT (error_trace (e) < 0);
-  if (ret != NULL) {
-    pgr_cancel_if_exists (&root);
-    if (ret->dpt != NULL) {
-      dpgt_close (ret->dpt);
-    }
-    if (ret->tnxt != NULL) {
-      txnt_close (ret->tnxt);
-    }
-    mem.table->free (mem.self, ret);
-  }
-
-  if (ww != NULL) {
-    (void)wal_close_and_delete (ww, e);
-  }
-  if (fp != NULL) {
-    (void)fpgr_close (fp, e);
-  }
-  if (lt != NULL) {
-    lockt_destroy (lt);
-    mem.table->free (mem.self, lt);
-  }
-
-  return NULL;
 }
 
 #ifndef NDEBUG

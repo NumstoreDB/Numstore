@@ -14,7 +14,7 @@ ns_add_library(ns_numstore ${NS_NUMSTORE_SRCS})
 add_library(numstore::numstore ALIAS ns_numstore)
 target_link_libraries(
     ns_numstore
-    PUBLIC ns_common ns_types ns_disk_pager ns_page ns_algorithms ns_nsdb
+    PUBLIC ns_nsdb
 )
 
 # The one public header

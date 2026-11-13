@@ -14,8 +14,8 @@
 
 #include "dpg_table/ns_dirty_page_table.h"
 #include "ns_error.h"
-#include "pager/ns_page_fixture.h"
 #include "pager/ns_pager.h"
+#include "recovery/ns_pager_recovery.h"
 
 /*
  * Entry point for ARIES crash recovery.

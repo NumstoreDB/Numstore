@@ -15,8 +15,8 @@
 #include "ns_csx_assert.h"
 #include "ns_error.h"
 #include "ns_stdtypes.h"
-#include "pager/ns_page_fixture.h"
 #include "pager/ns_pager.h"
+#include "recovery/ns_pager_recovery.h"
 #include "txn_table/ns_txn_table.h"
 #include "wal/ns_wal.h"
 

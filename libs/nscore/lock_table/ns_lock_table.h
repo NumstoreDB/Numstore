@@ -24,12 +24,8 @@
 #include "ns_slab_alloc.h"
 #include "os/ns_malloc.h"
 #include "os/ns_os.h"
+#include "txn_table/ns_txn.h"
 
-#include <stdbool.h>
-
-struct txn;
-
-///////////////////// Lock Table
 struct lockt
 {
   struct i_os       os;         // The OS every gr_lock in the table is built on
@@ -43,8 +39,31 @@ DEFINE_DBG_ASSERT (struct lockt, lockt, t, {
   ASSERT (t->table);
 })
 
+///////////////////////
+///// Lifecycle
 err_t lockt_init (struct lockt *t, struct i_mem mem, struct i_os os, error *e);
 void lockt_destroy (struct lockt *t);
+
+HEADER_FUNC struct lockt *
+lockt_create (struct i_mem mem, struct i_os os, error *e)
+{
+  struct lockt *lt = mem.table->malloc (mem.self, 1, sizeof *lt, e);
+  if (lt == NULL) {
+    return NULL;
+  }
+  if (lockt_init (lt, mem, os, e) < 0) {
+    mem.table->free (mem.self, lt);
+    return NULL;
+  }
+  return lt;
+}
+
+///////////////////////
+///// Utilities
+void i_log_lockt (int log_level, struct lockt *t);
+
+///////////////////////
+///// Primary api
 err_t lockt_lock (
     struct lockt  *t,
     struct lt_lock lock,
@@ -54,6 +73,5 @@ err_t lockt_lock (
 );
 void lockt_unlock (struct lockt *t, struct lt_lock lock, enum lock_mode mode);
 void lockt_unlock_tx (struct lockt *t, struct txn *tx);
-void i_log_lockt (int log_level, struct lockt *t);
 
 #endif // LOCK_TABLE_H

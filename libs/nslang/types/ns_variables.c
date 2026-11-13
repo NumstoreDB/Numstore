@@ -423,6 +423,27 @@ TEST (rand_varname_different_hash)
 }
 #endif
 
+err_t
+var_resolve_index_ofst_size (
+    struct variable *v,
+    b_size          *dest,
+    sb_size          sofst,
+    t_size           tsize,
+    error           *e
+)
+{
+
+  // Signed byte offset
+  sb_size sbofst;
+  if (safe_mul_i64_err (&sbofst, sofst, (i64)tsize, e) < 0) {
+    return error_trace (e);
+  }
+
+  *dest = var_resolve_index (v, sbofst);
+
+  return SUCCESS;
+}
+
 b_size
 var_resolve_index (struct variable *v, sb_size bofst)
 {

@@ -251,7 +251,8 @@
 #  define HAS_BUILTIN_OVERFLOW 0
 #endif
 
-#define HEADER_FUNC static inline MAYBE_UNUSED
+#define HEADER_FUNC  static inline MAYBE_UNUSED
+#define UNUSED(expr) ((void)(expr))
 
 ////////////////////////////////////////////////////////////
 // SYSTEM INCLUDES

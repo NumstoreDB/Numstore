@@ -568,7 +568,16 @@ HEADER_FUNC err_t
 safe_add_u64_err (u64 *dest, const u64 a, const u64 b, error *e)
 {
   if (!safe_add_u64 (dest, a, b)) {
-    return error_causef (e, ERR_ARITH, "Overflow");
+    return error_causef (e, ERR_ARITH, "Overflow: %" PRIu64 " + %" PRIu64, a, b);
+  }
+  return SUCCESS;
+}
+
+HEADER_FUNC err_t
+safe_mul_i64_err (i64 *dest, const i64 a, const i64 b, error *e)
+{
+  if (!safe_mul_i64 (dest, a, b)) {
+    return error_causef (e, ERR_ARITH, "Overflow: %" PRId64 " x %" PRId64, a, b);
   }
   return SUCCESS;
 }

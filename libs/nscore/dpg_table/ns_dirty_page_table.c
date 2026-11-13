@@ -85,11 +85,6 @@ dpge_equals (const struct hnode *left, const struct hnode *right)
   return ret;
 }
 
-DEFINE_DBG_ASSERT (struct dpg_table, dirty_pg_table, d, {
-  ASSERT (d);
-  ASSERT (d->t);
-})
-
 // Lifecycle
 struct dpg_table *
 dpgt_open (struct i_mem mem, error *e)
@@ -139,17 +134,81 @@ merge_dpge (const pgno pg, const lsn rec_lsn, void *vctx)
     return;
   }
 
-  // dest can already have the page - restart adds the pages it redoes and
-  // undoes to the pager's table as it goes. src wins, and one entry per
-  // page: a second one would outlive the flush that removes the first
-  if (dpgt_exists (ctx->dest, pg)) {
-    dpgt_update (ctx->dest, pg, rec_lsn);
+  if (dpgt_upsert (ctx->dest, pg, rec_lsn, ctx->e) < 0) {
     return;
+  }
+}
+
+struct upsert_ctx
+{
+  struct dpg_table *t;
+  pgno              pg;
+  lsn               rec_lsn;
+};
+
+static void
+dpgt_upsert_update (struct hnode *cur, void *_ctx)
+{
+  struct upsert_ctx *ctx   = _ctx;
+  struct dpg_entry  *entry = container_of (cur, struct dpg_entry, node);
+
+  latch_lock (&entry->l);
+  ASSERT (entry->pg == ctx->pg);
+  entry->rec_lsn = ctx->rec_lsn;
+  latch_unlock (&entry->l);
+}
+
+static void
+dpgt_upsert_noop (struct hnode *cur, void *_ctx)
+{
+  struct upsert_ctx *ctx   = _ctx;
+  struct dpg_entry  *entry = container_of (cur, struct dpg_entry, node);
+
+  latch_lock (&entry->l);
+  ASSERT (entry->pg == ctx->pg);
+
+  // Only be doing noops if you know
+  // that the page is going to have a
+  // lower rec_lsn.
+  //
+  // You never ignore smaller rec_lsn
+  //
+  // TODO - I need to validate this
+  // ASSERT (entry->rec_lsn <= ctx->rec_lsn);
+
+  latch_unlock (&entry->l);
+}
+
+static struct hnode *
+dpgt_upsert_new (void *_ctx, error *e)
+{
+  struct upsert_ctx *ctx = _ctx;
+
+  // Allocate a new dpg entry
+  struct dpg_entry  *v   = slab_alloc_alloc (&ctx->t->alloc, e);
+  if (v == NULL) {
+    return NULL;
   }
 
-  if (dpgt_add (ctx->dest, pg, rec_lsn, ctx->e) < 0) {
-    return;
-  }
+  dpge_init (v, ctx->pg, ctx->rec_lsn);
+
+  return &v->node;
+}
+
+err_t
+dpgt_upsert (struct dpg_table *t, pgno pg, lsn rec_lsn, error *e)
+{
+  // This is just used for searching
+  struct dpg_entry key;
+  dpge_init (&key, pg, rec_lsn);
+
+  struct upsert_ctx ctx = {
+      .t       = t,
+      .pg      = pg,
+      .rec_lsn = rec_lsn,
+  };
+
+  return htable_upsert (t->t, &key.node, &ctx, dpge_equals, dpgt_upsert_update, dpgt_upsert_new, e);
 }
 
 err_t
@@ -251,32 +310,20 @@ dpgt_exists (const struct dpg_table *t, const pgno pg)
 }
 
 err_t
-dpgt_add (struct dpg_table *t, const pgno pg, const lsn rec_lsn, error *e)
-{
-  DBG_ASSERT (dirty_pg_table, t);
-
-  struct dpg_entry *v = slab_alloc_alloc (&t->alloc, e);
-  if (v == NULL) {
-    goto theend;
-  }
-
-  dpge_init (v, pg, rec_lsn);
-
-  htable_insert (t->t, &v->node);
-
-theend:
-  return error_trace (e);
-}
-
-err_t
 dpgt_add_if_ne (struct dpg_table *t, pgno pg, lsn rec_lsn, error *e)
 {
   DBG_ASSERT (dirty_pg_table, t);
 
-  if (!dpgt_exists (t, pg)) {
-    return dpgt_add (t, pg, rec_lsn, e);
-  }
-  return SUCCESS;
+  struct dpg_entry key;
+  dpge_init (&key, pg, rec_lsn);
+
+  struct upsert_ctx ctx = {
+      .t       = t,
+      .pg      = pg,
+      .rec_lsn = rec_lsn,
+  };
+
+  return htable_upsert (t->t, &key.node, &ctx, dpge_equals, dpgt_upsert_noop, dpgt_upsert_new, e);
 }
 
 bool
@@ -294,27 +341,6 @@ dpgt_get (lsn *dest, struct dpg_table *t, const pgno pg)
   }
 
   return node != NULL;
-}
-
-void
-dpgt_remove (bool *exists, struct dpg_table *t, const pgno pg)
-{
-  DBG_ASSERT (dirty_pg_table, t);
-  ASSERT (exists);
-
-  struct dpg_entry key;
-  dpge_key_init (&key, pg);
-
-  struct hnode **node = htable_lookup (t->t, &key.node, dpge_equals);
-
-  if (node == NULL) {
-    *exists = false;
-    return;
-  }
-
-  *exists = true;
-
-  htable_delete (t->t, node);
 }
 
 void
@@ -461,11 +487,11 @@ TEST (dpgt_merge_into)
     struct dpg_table *dest = dpgt_open (ctx->mem, &ctx->e);
     struct dpg_table *src  = dpgt_open (ctx->mem, &ctx->e);
     for (pgno pg = 1; pg <= 5; pg++) {
-      dpgt_add (dest, pg, pg * 10, &ctx->e);
+      dpgt_upsert (dest, pg, pg * 10, &ctx->e);
     }
 
     for (pgno pg = 6; pg <= 10; pg++) {
-      dpgt_add (src, pg, pg * 10, &ctx->e);
+      dpgt_upsert (src, pg, pg * 10, &ctx->e);
     }
 
     const err_t result = dpgt_merge_into (dest, src, &ctx->e);
@@ -483,9 +509,10 @@ TEST (dpgt_merge_into)
   {
     struct dpg_table *dest = dpgt_open (ctx->mem, &ctx->e);
     struct dpg_table *src  = dpgt_open (ctx->mem, &ctx->e);
+
     // Same page in both with different rec_lsn
-    dpgt_add (dest, 42, 100, &ctx->e);
-    dpgt_add (src, 42, 200, &ctx->e);
+    dpgt_upsert (dest, 42, 100, &ctx->e);
+    dpgt_upsert (src, 42, 200, &ctx->e);
 
     dpgt_merge_into (dest, src, &ctx->e);
 
@@ -504,7 +531,7 @@ TEST (dpgt_min_rec_lsn)
   TEST_CASE ("single entry")
   {
     struct dpg_table *t = dpgt_open (ctx->mem, &ctx->e);
-    dpgt_add (t, 1, 50, &ctx->e);
+    dpgt_upsert (t, 1, 50, &ctx->e);
 
     const lsn min = dpgt_min_rec_lsn (t);
     test_assert_type_equal (min, (lsn)50, lsn, PRlsn);
@@ -515,10 +542,10 @@ TEST (dpgt_min_rec_lsn)
   TEST_CASE ("multiple entries")
   {
     struct dpg_table *t = dpgt_open (ctx->mem, &ctx->e);
-    dpgt_add (t, 1, 100, &ctx->e);
-    dpgt_add (t, 2, 25, &ctx->e);
-    dpgt_add (t, 3, 75, &ctx->e);
-    dpgt_add (t, 4, 50, &ctx->e);
+    dpgt_upsert (t, 1, 100, &ctx->e);
+    dpgt_upsert (t, 2, 25, &ctx->e);
+    dpgt_upsert (t, 3, 75, &ctx->e);
+    dpgt_upsert (t, 4, 50, &ctx->e);
 
     const lsn min = dpgt_min_rec_lsn (t);
     test_assert_type_equal (min, (lsn)25, lsn, PRlsn);
@@ -541,19 +568,19 @@ TEST (dpgt_exists)
   {
     struct dpg_table *t = dpgt_open (ctx->mem, &ctx->e);
     test_assert (!dpgt_exists (t, 1100));
-    dpgt_add (t, 1100, 500, &ctx->e);
+    dpgt_upsert (t, 1100, 500, &ctx->e);
     test_assert (dpgt_exists (t, 1100));
 
     dpgt_close (t);
   }
 }
 
-TEST (dpgt_add)
+TEST (dpgt_upsert)
 {
   TEST_CASE ("new entry")
   {
     struct dpg_table *t = dpgt_open (ctx->mem, &ctx->e);
-    dpgt_add (t, 900, 100, &ctx->e);
+    dpgt_upsert (t, 900, 100, &ctx->e);
 
     lsn  rec_lsn;
     bool found = dpgt_get (&rec_lsn, t, 900);
@@ -567,7 +594,7 @@ TEST (dpgt_add)
   {
     struct dpg_table *t = dpgt_open (ctx->mem, &ctx->e);
     for (pgno pg = 1; pg <= 5; pg++) {
-      dpgt_add (t, pg, pg * 10, &ctx->e);
+      dpgt_upsert (t, pg, pg * 10, &ctx->e);
     }
 
     for (pgno pg = 1; pg <= 5; pg++) {
@@ -612,7 +639,7 @@ TEST (dpgt_get)
   TEST_CASE ("get rec_lsn")
   {
     struct dpg_table *t = dpgt_open (ctx->mem, &ctx->e);
-    dpgt_add (t, 100, 50, &ctx->e);
+    dpgt_upsert (t, 100, 50, &ctx->e);
 
     lsn  rec_lsn;
     bool found = dpgt_get (&rec_lsn, t, 100);
@@ -625,7 +652,7 @@ TEST (dpgt_get)
   TEST_CASE ("update rec_lsn")
   {
     struct dpg_table *t = dpgt_open (ctx->mem, &ctx->e);
-    dpgt_add (t, 600, 100, &ctx->e);
+    dpgt_upsert (t, 600, 100, &ctx->e);
 
     dpgt_update (t, 600, 200);
 
@@ -640,9 +667,9 @@ TEST (dpgt_get)
   TEST_CASE ("multiple pages independent")
   {
     struct dpg_table *t = dpgt_open (ctx->mem, &ctx->e);
-    dpgt_add (t, 1, 10, &ctx->e);
-    dpgt_add (t, 2, 20, &ctx->e);
-    dpgt_add (t, 3, 300, &ctx->e);
+    dpgt_upsert (t, 1, 10, &ctx->e);
+    dpgt_upsert (t, 2, 20, &ctx->e);
+    dpgt_upsert (t, 3, 300, &ctx->e);
 
     lsn rec_lsn;
 
@@ -664,11 +691,9 @@ TEST (dpgt_remove)
   TEST_CASE ("remove existing")
   {
     struct dpg_table *t = dpgt_open (ctx->mem, &ctx->e);
-    dpgt_add (t, 400, 100, &ctx->e);
+    dpgt_upsert (t, 400, 100, &ctx->e);
 
-    bool removed;
-    dpgt_remove (&removed, t, 400);
-    test_assert (removed);
+    dpgt_remove_expect (t, 400);
 
     lsn  rec_lsn;
     bool found = dpgt_get (&rec_lsn, t, 400);
@@ -677,27 +702,12 @@ TEST (dpgt_remove)
     dpgt_close (t);
   }
 
-  TEST_CASE ("remove nonexistent")
-  {
-    struct dpg_table *t = dpgt_open (ctx->mem, &ctx->e);
-    bool              removed;
-    dpgt_remove (&removed, t, 500);
-    test_assert (!removed);
-
-    dpgt_close (t);
-  }
-
   TEST_CASE ("double remove")
   {
     struct dpg_table *t = dpgt_open (ctx->mem, &ctx->e);
-    dpgt_add (t, 100, 50, &ctx->e);
+    dpgt_upsert (t, 100, 50, &ctx->e);
 
-    bool removed;
-    dpgt_remove (&removed, t, 100);
-    test_assert (removed);
-
-    dpgt_remove (&removed, t, 100);
-    test_assert (!removed);
+    dpgt_remove_expect (t, 100);
 
     dpgt_close (t);
   }
@@ -705,11 +715,9 @@ TEST (dpgt_remove)
   TEST_CASE ("get fails after remove")
   {
     struct dpg_table *t = dpgt_open (ctx->mem, &ctx->e);
-    dpgt_add (t, 200, 50, &ctx->e);
+    dpgt_upsert (t, 200, 50, &ctx->e);
 
-    bool removed;
-    dpgt_remove (&removed, t, 200);
-    test_assert (removed);
+    dpgt_remove_expect (t, 200);
 
     lsn  rec_lsn;
     bool found = dpgt_get (&rec_lsn, t, 200);
@@ -736,8 +744,8 @@ TEST (dpgt_equal)
     struct dpg_table *t1 = dpgt_open (ctx->mem, &ctx->e);
     struct dpg_table *t2 = dpgt_open (ctx->mem, &ctx->e);
     for (pgno pg = 1; pg <= 5; pg++) {
-      dpgt_add (t1, pg, pg * 10, &ctx->e);
-      dpgt_add (t2, pg, pg * 10, &ctx->e);
+      dpgt_upsert (t1, pg, pg * 10, &ctx->e);
+      dpgt_upsert (t2, pg, pg * 10, &ctx->e);
     }
 
     test_assert (dpgt_equal (t1, t2));
@@ -750,8 +758,8 @@ TEST (dpgt_equal)
   {
     struct dpg_table *t1 = dpgt_open (ctx->mem, &ctx->e);
     struct dpg_table *t2 = dpgt_open (ctx->mem, &ctx->e);
-    dpgt_add (t1, 1, 10, &ctx->e);
-    dpgt_add (t2, 1, 20, &ctx->e);
+    dpgt_upsert (t1, 1, 10, &ctx->e);
+    dpgt_upsert (t2, 1, 20, &ctx->e);
 
     test_assert (!dpgt_equal (t1, t2));
 
@@ -765,8 +773,8 @@ TEST (dpgt_equal)
     struct dpg_table *t1 = dpgt_open (ctx->mem, &ctx->e);
     struct dpg_table *t2 = dpgt_open (ctx->mem, &ctx->e);
     for (pgno pg = 1; pg <= 5; pg++) {
-      dpgt_add (t1, pg, pg * 10, &ctx->e);
-      dpgt_add (t2, pg, (pg * 10) + 1, &ctx->e);
+      dpgt_upsert (t1, pg, pg * 10, &ctx->e);
+      dpgt_upsert (t2, pg, (pg * 10) + 1, &ctx->e);
     }
 
     test_assert (!dpgt_equal (t1, t2));
@@ -779,9 +787,9 @@ TEST (dpgt_equal)
   {
     struct dpg_table *t1 = dpgt_open (ctx->mem, &ctx->e);
     struct dpg_table *t2 = dpgt_open (ctx->mem, &ctx->e);
-    dpgt_add (t1, 1, 10, &ctx->e);
-    dpgt_add (t1, 2, 20, &ctx->e);
-    dpgt_add (t2, 1, 10, &ctx->e);
+    dpgt_upsert (t1, 1, 10, &ctx->e);
+    dpgt_upsert (t1, 2, 20, &ctx->e);
+    dpgt_upsert (t2, 1, 10, &ctx->e);
 
     test_assert (!dpgt_equal (t1, t2));
 
@@ -793,8 +801,8 @@ TEST (dpgt_equal)
   {
     struct dpg_table *t1 = dpgt_open (ctx->mem, &ctx->e);
     struct dpg_table *t2 = dpgt_open (ctx->mem, &ctx->e);
-    dpgt_add (t1, 1, 10, &ctx->e);
-    dpgt_add (t2, 2, 10, &ctx->e);
+    dpgt_upsert (t1, 1, 10, &ctx->e);
+    dpgt_upsert (t2, 2, 10, &ctx->e);
 
     test_assert (!dpgt_equal (t1, t2));
 
@@ -823,7 +831,7 @@ dpgt_insert_thread (void *arg)
     const pgno pg      = ctx->start_pg + (pgno)i;
     const lsn  rec_lsn = ctx->start_pg + (lsn)i;
 
-    if (dpgt_add (ctx->table, pg, rec_lsn, &e) == SUCCESS) {
+    if (dpgt_upsert (ctx->table, pg, rec_lsn, &e) == SUCCESS) {
       ctx->counter += 1;
     }
   }
@@ -867,12 +875,7 @@ dpgt_remove_thread (void *arg)
   struct dpgt_thread_ctx *ctx = arg;
 
   for (int i = 0; i < ctx->count; i++) {
-    bool removed;
-    dpgt_remove (&removed, ctx->table, ctx->start_pg + (pgno)i);
-
-    if (removed) {
-      ctx->counter += 1;
-    }
+    dpgt_remove_expect (ctx->table, ctx->start_pg + (pgno)i);
   }
 
   return NULL;
@@ -936,7 +939,7 @@ TEST (dpgt_concurrent)
   {
     struct dpg_table *t = dpgt_open (ctx->mem, &ctx->e);
     for (pgno pg = 0; pg < 200; pg++) {
-      dpgt_add (t, pg, pg * 10, &ctx->e);
+      dpgt_upsert (t, pg, pg * 10, &ctx->e);
     }
 
     struct dpgt_thread_ctx ctx1 = {
@@ -988,7 +991,7 @@ TEST (dpgt_concurrent)
   {
     struct dpg_table *t = dpgt_open (ctx->mem, &ctx->e);
     for (pgno pg = 0; pg < 300; pg++) {
-      dpgt_add (t, pg, pg * 10, &ctx->e);
+      dpgt_upsert (t, pg, pg * 10, &ctx->e);
     }
 
     struct dpgt_thread_ctx ctx1 = {
@@ -1046,7 +1049,7 @@ TEST (dpgt_concurrent)
   {
     struct dpg_table *t = dpgt_open (ctx->mem, &ctx->e);
     for (pgno pg = 0; pg < 300; pg++) {
-      dpgt_add (t, pg, pg * 10, &ctx->e);
+      dpgt_upsert (t, pg, pg * 10, &ctx->e);
     }
 
     struct dpgt_thread_ctx ctx1 = {
@@ -1088,9 +1091,6 @@ TEST (dpgt_concurrent)
     ctx->os.table->thread_join (ctx->os.self, t2.self);
     ctx->os.table->thread_join (ctx->os.self, t3.self);
 
-    int total_removes = ctx1.counter + ctx2.counter + ctx3.counter;
-    test_assert_int_equal (total_removes, 300);
-
     for (pgno pg = 0; pg < 300; pg++) {
       test_assert (!dpgt_exists (t, pg));
     }
@@ -1103,7 +1103,7 @@ TEST (dpgt_concurrent)
     struct dpg_table *t = dpgt_open (ctx->mem, &ctx->e);
     // Pre-populate half so readers have something to find
     for (pgno pg = 0; pg < 100; pg++) {
-      dpgt_add (t, pg, pg * 10, &ctx->e);
+      dpgt_upsert (t, pg, pg * 10, &ctx->e);
     }
 
     struct dpgt_thread_ctx insert_ctx = {
@@ -1203,7 +1203,7 @@ TEST (dpgt_add_fail_nomem)
       error_reset (&ctx->e);
 
       faulty_mem_fail_after (ctx->faulty_mem, fail_after);
-      ret = dpgt_add (t, 7, 100, &ctx->e);
+      ret = dpgt_upsert (t, 7, 100, &ctx->e);
       faulty_mem_reset (ctx->faulty_mem);
 
       // A failed add leaves the table as it was
@@ -1229,7 +1229,7 @@ TEST (dpgt_merge_into_fail_nomem)
   struct dpg_table *src = dpgt_open (ctx->mem, &ctx->e);
   test_assert (src != NULL);
   for (pgno pg = 1; pg <= 3; ++pg) {
-    test_err_t_check (dpgt_add (src, pg, pg * 10, &ctx->e), SUCCESS, &ctx->e);
+    test_err_t_check (dpgt_upsert (src, pg, pg * 10, &ctx->e), SUCCESS, &ctx->e);
   }
 
   err_t ret;

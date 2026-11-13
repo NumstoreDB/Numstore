@@ -69,11 +69,8 @@ pgr_release_with_log (
       h->tx->data.undo_next_lsn = page_lsn;
     }
 
-    if (!dpgt_exists (p->dpt, page_h_pgno (h))) {
-      // This is the first update (RecLSN = LSN of the first update)
-      if (dpgt_add (p->dpt, page_h_pgno (h), page_lsn, e) < 0) {
-        return error_trace (e);
-      }
+    if (dpgt_add_if_ne (p->dpt, page_h_pgno (h), page_lsn, e) < 0) {
+      return error_trace (e);
     }
 
     memcpy (&h->pgr->page.raw, h->pgw->page.raw, NS_PAGE_SIZE);

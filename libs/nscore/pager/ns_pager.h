@@ -16,16 +16,13 @@
 #define PAGER_H
 
 #include "dpg_table/ns_dirty_page_table.h"
-#include "ns_arena_alloc.h"
 #include "ns_csx_assert.h"
-#include "ns_dbl_buffer.h"
 #include "ns_error.h"
 #include "ns_file_pager.h"
 #include "ns_latch.h"
 #include "ns_page.h"
 #include "ns_page_h.h"
 #include "ns_periodic_task.h"
-#include "ns_slab_alloc.h"
 #include "ns_stdtypes.h"
 #include "os/ns_os.h"
 #include "txn_table/ns_txn_table.h"
@@ -115,33 +112,33 @@ struct pager_header
 
 struct pager
 {
-  struct i_mem             mem;
-  struct i_os              os;
+  struct i_mem         mem;
+  struct i_os          os;
 
-  struct pager_header      header;
-  u8                       _header[PAGE_HEADER_LEN];
+  struct pager_header  header;
+  u8                   _header[PAGE_HEADER_LEN];
 
   // Resources / Systems
-  struct file_pager *const fp;
-  struct wal              *ww;
-  struct lockt            *lt;
-  struct dpg_table *const  dpt;
-  struct txn_table *const  tnxt;
+  struct file_pager   *fp;
+  struct wal          *ww;
+  struct lockt        *lt;
+  struct dpg_table    *dpt;
+  struct txn_table    *tnxt;
 
   // Flags and concurrency
-  _Atomic int              flags;
-  _Atomic u32              clock;
-  _Atomic txid             next_tid;
+  _Atomic int          flags;
+  _Atomic u32          clock;
+  _Atomic txid         next_tid;
 
   // Properties
-  latch                    pgrnew_lock;
-  struct periodic_task     checkpoint_task;
+  latch                pgrnew_lock;
+  struct periodic_task checkpoint_task;
 
   // Data
-  hash_table_idx           pgno_to_value;
-  hentry_idx               _hdata[MEMORY_PAGE_LEN];
-  latch                    htable_lock;
-  struct page_frame        pages[MEMORY_PAGE_LEN];
+  hash_table_idx       pgno_to_value;
+  hentry_idx           _hdata[MEMORY_PAGE_LEN];
+  latch                htable_lock;
+  struct page_frame    pages[MEMORY_PAGE_LEN];
 };
 
 DEFINE_DBG_ASSERT (struct pager, pager, p, {
@@ -153,15 +150,21 @@ DEFINE_DBG_ASSERT (struct pager, pager, p, {
   ASSERT (p->tnxt);
 })
 
+///////////////////////
+///// Lifecycle
 struct pager *pgr_open (const char *dbname, struct i_mem mem, struct i_os os, error *e);
 err_t pgr_delete_single_file (const char *dbname, struct i_os os, error *e);
 err_t pgr_close (struct pager *p, error *e);
 err_t pgr_crash (struct pager *p, error *e);
 
+///////////////////////
+///// Transactions
 err_t pgr_begin_txn (struct txn *tx, struct pager *p, error *e);
 err_t pgr_commit (struct pager *p, struct txn *tx, error *e);
 err_t pgr_rollback (struct pager *p, struct txn *tx, lsn save_lsn, error *e);
 
+///////////////////////
+///// Getting Pages
 err_t pgr_get (page_h *dest, int flags, pgno pgno, struct pager *p, error *e);
 err_t pgr_get_writable (
     page_h       *dest,
@@ -181,8 +184,13 @@ err_t pgr_get_maybe_writable (
     error        *e
 );
 
+///////////////////////
+///// New / Delete
 err_t pgr_new (page_h *dest, struct pager *p, struct txn *tx, enum page_type ptype, error *e);
 err_t pgr_delete_and_release (struct pager *p, struct txn *tx, page_h *h, error *e);
+
+///////////////////////
+///// Release
 err_t pgr_release_with_log (
     struct pager            *p,
     page_h                  *h,
@@ -194,82 +202,40 @@ err_t pgr_release (struct pager *p, page_h *h, const int flags, error *e);
 err_t pgr_release_if_exists (struct pager *p, page_h *h, int flags, error *e);
 err_t pgr_release_with_flush (struct pager *p, page_h *h, const int flags, error *e);
 err_t pgr_release_with_evict (struct pager *p, page_h *h, const int flags, error *e);
-
 void pgr_unfix (page_h *h, int flags);
-i32 pgr_reserve_and_ctrl_lock (struct pager *p, error *e);
 
-err_t pgr_evict_unsafe (struct pager *p, struct page_frame *mp, error *e);
-err_t pgr_evict_all_pages (struct pager *p, error *e);
-
-err_t pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e);
-err_t pgr_flush_all_pages (struct pager *p, error *e);
-
-err_t pgr_upgrade (page_h *_pg, struct txn *tx, int flags, struct pager *p, error *e);
-err_t pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e);
-
-void pgr_cancel (page_h *h);
-void pgr_cancel_if_exists (page_h *h);
-
+///////////////////////
+///// Getters
 p_size pgr_get_npages (struct pager *p);
 bool pgr_isnew (const struct pager *p);
 void i_log_page_table (int log_level, bool only_present, struct pager *p);
 
-// Header writing
+///////////////////////
+///// Inner utils
+i32 pgr_reserve_and_ctrl_lock (struct pager *p, error *e);
+err_t pgr_launch_checkpoint_thread (struct pager *p, u64 msec, error *e);
+
+// Evict
+err_t pgr_evict_unsafe (struct pager *p, struct page_frame *mp, error *e);
+err_t pgr_evict_all_pages (struct pager *p, error *e);
+
+// Flush
+err_t pgr_flush_unsafe (const struct pager *p, struct page_frame *mp, error *e);
+err_t pgr_flush_all_pages (struct pager *p, error *e);
+
+// Cancel
+void pgr_cancel (page_h *h);
+void pgr_cancel_if_exists (page_h *h);
+
+///////////////////////
+///// Deprecated
+err_t pgr_upgrade (page_h *_pg, struct txn *tx, int flags, struct pager *p, error *e);
+
+///////////////////////
+///// Header
 err_t pgr_write_lsn0 (struct pager *p, lsn lsn0, error *e);
 err_t pgr_write_lsn1 (struct pager *p, lsn lsn1, error *e);
 err_t pgr_write_next_lsn (struct pager *p, lsn l, error *e);
 err_t pgr_write_header (struct pager *p, error *e);
-
-struct aries_ctx
-{
-  /**
-   * At the end of the analysis phase,
-   * this is the minimum recovery lsn
-   *
-   * It is the lsn the redo pass starts reading from in
-   * the restart phase on recovery
-   */
-  lsn                redo_lsn;
-
-  /**
-   * We keep track of the maximum transaction id that
-   * we see in the database in order to pick up where we left
-   * off
-   */
-  txid               max_tid;
-
-  /**
-   * These are the reconstruction of the active
-   * transaction table and the dirty page table
-   * while we run recovery.
-   *
-   * They are ephemeral and will be destroyed at the
-   * end of recovery. Then the pager will create
-   * them again because we're in a clean state
-   */
-  struct txn_table  *txt;
-  struct dpg_table  *dpt;
-
-  /**
-   * While we scan through the log, we'll
-   * be adding transactions to the transaction table
-   * and we need a place to allocate / put those transactions
-   * (normally we do it on the stack)
-   */
-  struct dbl_buffer  txn_ptrs;
-  struct slab_alloc  alloc;
-  struct arena_alloc backing_alloc;
-};
-
-err_t aries_ctx_create (struct aries_ctx *dest, struct i_mem mem, error *e);
-void aries_ctx_free (struct aries_ctx *ctx);
-struct txn *aries_ctx_txn_alloc (struct aries_ctx *ctx, error *e);
-
-err_t pgr_restart_analysis (struct pager *p, struct aries_ctx *ctx, error *e);
-err_t pgr_restart_redo (struct pager *p, struct aries_ctx *ctx, error *e);
-err_t pgr_restart_undo (struct pager *p, struct aries_ctx *ctx, error *e);
-err_t pgr_recover (struct pager *p, error *e);
-
-err_t pgr_detect_wal_and_recover (struct pager *p, error *e);
 
 #endif // PAGER_H

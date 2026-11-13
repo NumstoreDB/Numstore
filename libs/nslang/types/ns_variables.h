@@ -71,6 +71,13 @@ err_t variable_copy (
     error                 *e
 );
 b_size var_resolve_index (struct variable *v, sb_size bofst);
+err_t var_resolve_index_ofst_size (
+    struct variable *v,
+    b_size          *dest,
+    sb_size          sofst,
+    t_size           tsize,
+    error           *e
+);
 // How many of [nelem] elements of [size] bytes, [stride] elements apart and
 // starting at [bofst], fit in the variable as whole elements
 b_size var_resolve_nelem (

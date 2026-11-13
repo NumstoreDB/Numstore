@@ -13,6 +13,7 @@
 /// limitations under the License.
 
 #include "ns_arena_alloc.h"
+#include "ns_bounds.h"
 #include "ns_csx_assert.h"
 #include "ns_error.h"
 #include "ns_stream.h"
@@ -32,7 +33,7 @@ numstore_insert_from_name (
     struct pager       *p,
     struct txn         *tx,
     struct string       vname,
-    b_size              ofst,
+    sb_size             ofst,
     b_size              len,
     struct arena_alloc *valloc,
     struct variable    *var,
@@ -65,7 +66,7 @@ numstore_insert (
     struct pager    *p,
     struct txn      *tx,
     struct variable *var,
-    b_size           ofst,
+    sb_size          sofst,
     b_size           len,
     struct stream   *src,
     error           *e
@@ -77,16 +78,20 @@ numstore_insert (
   DBG_ASSERT (stream, src);
   DBG_ASSERT (clean_error, e);
 
-  // Skip len 0 inserts
+  // rope treats length 0 as infinite, numstore treats it as empty
   if (len == 0) {
+    // TODO - same behavior if the variable doesn't exist
+    // e.g. return error on does not exist
+    // write numstore_exists()
     return SUCCESS;
   }
 
-  // TODO: ofst is unsigned but var_resolve_index reads its argument as signed
-  // (negative counts from the end). The cast keeps today's wrap-around
-  // behavior; ofst should be sb_size so the intent is in the type.
-  t_size                  tsize   = type_byte_size (var->dtype);
-  b_size                  bofst   = var_resolve_index (var, (sb_size)(tsize * ofst));
+  // Resolve actual offset from type size and input offset
+  t_size tsize = type_byte_size (var->dtype);
+  b_size bofst;
+  if (var_resolve_index_ofst_size (var, &bofst, sofst, tsize, e) < 0) {
+    return error_trace (e);
+  }
 
   // Do insert
   struct ns_insert_params iparams = {
@@ -122,19 +127,28 @@ numstore_insert (
 }
 
 #ifndef NDEBUG
+/**
+ * These test cases build on each other,
+ * they keep inserting and growing the array
+ * and the tests assume that pattern
+ */
 TEST (numstore_insert_from_var)
 {
+  // Set up
   struct pgr_fixture f;
   pgr_fixture_create (&f, &ctx->e);
   numstore_init_pager (f.p, &ctx->e);
   pgr_begin_txn (&f.tx, f.p, &ctx->e);
 
+  // Create a seed variable
   struct variable var;
   numstore_create (f.p, &f.tx, strfcstr ("var"), TU32, &ctx->alloc, &var, &ctx->e);
 
-  TEST_CASE ("variable is present - capture variable")
+  TEST_CASE (
+      "If you supply a variable and allocator, numstore_insert captures "
+      "the variable"
+  )
   {
-    // Void it so that we re fetch it
     struct variable var_test;
 
     // Initialize data
@@ -178,7 +192,10 @@ TEST (numstore_insert_from_var)
     test_assert_memequal (out_data, expected, sizeof (expected));
   }
 
-  TEST_CASE ("variable is not present - capture variable")
+  TEST_CASE (
+      "If you don't supply a variable and allocator, insert does not "
+      "capture it"
+  )
   {
     // Initialize data
     u32 data[10];
@@ -223,6 +240,46 @@ TEST (numstore_insert_from_var)
     sb_size read = numstore_read (f.p, &f.tx, &var_test, ustride0 (0), &out, &ctx->e);
     test_assert_equal (read, 20);
     test_assert_memequal (out_data, expected, sizeof (expected));
+  }
+
+  TEST_CASE ("a negative offset goes from the end")
+  {
+    struct variable var_test;
+
+    // Total size
+    b_size          size = var_test.nbytes;
+
+    // Insert at -5
+    u32             data[5];
+    arr_range (data);
+    istream_create_from_array (stream, data);
+    sb_size ret = numstore_insert_from_name (
+        f.p,
+        &f.tx,
+        strfcstr ("var"),
+        -5,
+        5,
+        &ctx->alloc,
+        &var_test,
+        &stream,
+        &ctx->e
+    );
+    test_assert_type_equal (ret, 5, sb_size, PRsb_size);
+
+    // Read and validate the data
+    u32 expected[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    u32 out_data[25];
+    arr_range (out_data);
+    ostream_create_from_array (out, out_data);
+    sb_size read = numstore_read (f.p, &f.tx, &var_test, ustride0 (0), &out, &ctx->e);
+    test_assert_equal (read, 25);
+    test_assert_memequal (out_data, expected, sizeof (expected));
+  }
+
+  TEST_CASE ("Overflow TODO")
+  {
+    // TODO - test if offset becomes an overflow - which honestly shouldn't
+    // happen
   }
 
   pgr_commit (f.p, &f.tx, &ctx->e);

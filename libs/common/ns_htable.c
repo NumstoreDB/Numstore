@@ -113,6 +113,77 @@ htable_lookup (
   return NULL;
 }
 
+err_t
+htable_upsert (
+    struct htable *t,
+    struct hnode  *key,
+    void          *ctx,
+    hnode_eq       eq,
+    hnode_update   update,
+    hnode_new      newnode,
+    error         *e
+)
+{
+  ASSERT (eq);
+  ASSERT (newnode);
+  ASSERT (update);
+  ASSERT (key);
+  latch_lock (&t->latch);
+
+  DBG_ASSERT (htable, t);
+
+  // Index into the hash table bins
+  const u32     pos = key->hcode % t->cap;
+  struct hnode *cur = t->table[pos];
+
+  if (cur == NULL) {
+    // Empty - initialize this bin
+    struct hnode *node = newnode (ctx, e);
+    if (node == NULL) {
+      latch_unlock (&t->latch);
+      return error_trace (e);
+    }
+    ASSERT (eq (key, node));
+    node->next    = cur;
+    t->table[pos] = node;
+    t->size++;
+    latch_unlock (&t->latch);
+    return SUCCESS;
+  }
+
+  for (; cur->next != NULL; cur = cur->next) {
+    // Check equality
+    if (cur->hcode == key->hcode && eq (cur, key)) {
+      update (cur, ctx);
+      latch_unlock (&t->latch);
+      return SUCCESS;
+    }
+  }
+
+  if (cur->hcode == key->hcode && eq (cur, key)) {
+    update (cur, ctx);
+    latch_unlock (&t->latch);
+    return SUCCESS;
+  }
+
+  ASSERT (cur->next == NULL);
+  struct hnode *node = newnode (ctx, e);
+  if (node == NULL) {
+    latch_unlock (&t->latch);
+    return error_trace (e);
+  }
+
+  ASSERT (eq (key, node));
+
+  node->next = NULL;
+  cur->next  = node;
+  t->size++;
+
+  latch_unlock (&t->latch);
+
+  return SUCCESS;
+}
+
 struct hnode *
 htable_delete (struct htable *t, struct hnode **from)
 {

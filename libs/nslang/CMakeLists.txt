@@ -8,4 +8,4 @@ add_subdirectory(parsers)
 add_subdirectory(types)
 
 ns_add_library(ns_types ${NS_TYPES_SRCS})
-target_link_libraries(ns_types PUBLIC ns_common ns_page)
+target_link_libraries(ns_types PUBLIC ns_page)
