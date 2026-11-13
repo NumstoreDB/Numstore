@@ -203,8 +203,11 @@ invocations so the flags live in one place:
 | `make valgrind`        | `unit_tests` and `ns_simtest` under valgrind                       |
 | `make leaks`           | the same two under macOS `leaks`                                   |
 | `make format`          | clang-format, gersemi and ruff over the tree                       |
+| `make tidy`            | clang-tidy over the C sources                                      |
 | `make clean`           | remove build artifacts                                             |
 
+Tool settings live in `.config/` (`clang-format`, `clang-tidy`, `gcovr.cfg`,
+`valgrind`, `leaks.env`).
 `coverage` needs gcovr, `format` needs clang-format, gersemi and ruff, and
 `valgrind` and `leaks` need the tool they're named after. CI runs `make
 test-unit` and `make release-package` on every push.

@@ -246,9 +246,6 @@ TEST (numstore_insert_from_var)
   {
     struct variable var_test;
 
-    // Total size
-    b_size          size = var_test.nbytes;
-
     // Insert at -5
     u32             data[5];
     arr_range (data);

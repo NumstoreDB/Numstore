@@ -78,10 +78,10 @@ build/docs/CMakeCache.txt:
 
 
 ############ Code Coverage
-# Filters and the assert/harness exclusions live in gcovr.cfg - see that file
+# Filters and the assert/harness exclusions live in .config/gcovr.cfg - see that file
 # for what is left out of the ratio and why. The search path stays here
 # because it is the one thing a CI job might point somewhere else.
-GCOVR = gcovr --config gcovr.cfg build/coverage --print-summary
+GCOVR = gcovr --config .config/gcovr.cfg build/coverage --print-summary
 
 .PHONY: coverage
 coverage: build/coverage/html/index.html
@@ -156,25 +156,8 @@ build/memcheck/bin/unit_tests: build/memcheck/CMakeCache.txt
 
 ############ Valgrind (linux)
 
-VALGRIND = valgrind \
-	--tool=memcheck \
-	--error-exitcode=1 \
-	--leak-check=full \
-	--show-leak-kinds=all \
-	--errors-for-leak-kinds=all \
-	--track-origins=yes \
-	--track-fds=yes \
-	--trace-children=yes \
-	--undef-value-errors=yes \
-	--expensive-definedness-checks=yes \
-	--partial-loads-ok=no \
-	--malloc-fill=0xab \
-	--free-fill=0xcd \
-	--keep-debuginfo=yes \
-	--read-var-info=yes \
-	--num-callers=50 \
-	--fair-sched=yes \
-	--gen-suppressions=all
+# Options: .config/valgrind, one per line
+VALGRIND = valgrind $$(cat .config/valgrind)
 
 .PHONY: valgrind
 valgrind: valgrind-unit valgrind-simtest
@@ -190,12 +173,8 @@ valgrind-simtest: build/memcheck/bin/ns_simtest
 
 ############ Leaks (macos)
 
-LEAKS = MallocStackLogging=1 \
-	MallocStackLoggingNoCompact=1 \
-	MallocScribble=1 \
-	MallocPreScribble=1 \
-	MallocGuardEdges=1 \
-	leaks --atExit --list --fullStacks --
+# Environment: .config/leaks.env, one NAME=value per line
+LEAKS = env $$(cat .config/leaks.env) leaks --atExit --list --fullStacks --
 
 .PHONY: leaks
 leaks: leaks-unit leaks-simtest
@@ -228,11 +207,10 @@ python-reinstall:
 	rm -rf build/python build/wheel
 	$(MAKE) python-install
  
-# Run from inside pytest/ so the tests import the installed package,
-# not the ./libs/pynumstore source directory.
+# The package is in libs/pynumstore/src, so the tests import the installed one.
 .PHONY: test-python
 test-python: python-install
-	cd pytest && python3 -m pytest -ra --tb=short
+	python3 -m pytest -ra --tb=short
  
 .PHONY: wheel
 wheel:
@@ -244,7 +222,6 @@ sdist:
 
 #############################################
 ### Housekeeping
-.PHONY: format
 EXCLUDE :=
 EXCLUDE += -not -path '*/.git/*'
 EXCLUDE += -not -path '*/.cache/*'
@@ -267,25 +244,33 @@ H_SRCS     := $(shell find . -name '*.h' $(EXCLUDE))
 CMAKE_SRCS := $(shell find . \( -name '*.cmake' -o -name 'CMakeLists.txt' \) $(EXCLUDE))
 PY_SRCS    := $(shell find . -name '*.py' $(EXCLUDE))
 
+CLANG_FORMAT_CFG := .config/clang-format
+CLANG_TIDY_CFG   := .config/clang-tidy
+
+.PHONY: format
 format:
-	-clang-format -i $(C_SRCS) $(H_SRCS)
+	-clang-format --style=file:$(CLANG_FORMAT_CFG) -i $(C_SRCS) $(H_SRCS)
 	-gersemi -i --no-warn-about-unknown-commands $(CMAKE_SRCS)
 	-ruff format $(PY_SRCS)
 	-cargo fmt --all
+
+.PHONY: tidy
+tidy:
+	-clang-tidy -p build/debug --config-file=$(CLANG_TIDY_CFG) $(C_SRCS)
 
 .PHONY: clean 
 clean: clean-c clean-python
 
 .PHONY: clean-common
 clean-common:
-	rm -rf build build_coverage docs/build docs/api 
+	rm -rf build
 	find . -type f -name '*.db'     -delete
 	find . -type f -name '*.nsdb'   -delete
 	find . -type f -name '*.wal'    -delete
 	find . -type f -name 'testdb*'  -delete
 	find . -type f -name 'vgcore.*' -delete
 	find . -type f -name gmon.out   -delete
-	rm -f foo test ns_simtest
+	rm -f foo test
 
 .PHONY: clean-c
 clean-c: clean-common

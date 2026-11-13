@@ -39,8 +39,8 @@ WarningsAsErrors: ''
 # Adjust the directory names to match your layout.
 HeaderFilterRegex: '.*/(core|nscore|include)/.*'
 
-# Needs a .clang-format in the repo, otherwise -fix reformats with LLVM style.
-FormatStyle: file
+# Run from the repo root: the style file is .config/clang-format. Without it, -fix reformats with LLVM style.
+FormatStyle: file:.config/clang-format
 
 CheckOptions:
   # ---- Naming ----

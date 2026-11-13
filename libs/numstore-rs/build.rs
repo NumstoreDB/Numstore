@@ -27,6 +27,7 @@ fn main() {
 
     // Re generate on changed
     println!("cargo:rerun-if-changed=../numstore/include/numstore.h");
+    println!("cargo:rerun-if-env-changed=NUMSTORE_LIB_DIR");
 
     bindgen::Builder::default()
         .header(numstore.join("include/numstore.h").to_str().unwrap())
