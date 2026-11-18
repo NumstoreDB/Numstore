@@ -1,7 +1,7 @@
 Transactions
 ============
 
-This picks up where [the query language tutorial](language_tour.md) left off.
+This picks up where [the query language tutorial](query-language.md) left off.
 
 ```python
 >>> import pynumstore as ns
@@ -11,9 +11,9 @@ This picks up where [the query language tutorial](language_tour.md) left off.
 Queries without a transaction
 -----------------------------
 
-Every one of the operations in the query language tutorial ran on its own. When
-you don't name a transaction, each query gets an automatic one: it either
-happens completely or not at all, and it's durable by the time the call returns.
+Every operation in the query language tutorial ran on its own. When you don't
+name a transaction, each query gets an automatic one: it either happens
+completely or not at all, and it's durable by the time the call returns.
 
 Group queries
 -------------
@@ -53,8 +53,8 @@ array([1.5 , 2.25, 3.75, 4.  , 5.  ])
 array([1.5 , 2.25, 3.75])
 ```
 
-A transaction is finished once you commit or roll it back, and using it again is
-an error rather than a silent no-op:
+A transaction is finished after you commit or roll it back. Using it again
+raises an error:
 
 ```python
 >>> txn
@@ -68,8 +68,8 @@ RuntimeError: transaction was already committed or rolled back
 Use the context manager
 -----------------------
 
-In practice you want the context manager, which commits when the block finishes
-and rolls back if it raises:
+In practice you want the context manager. It commits when the block finishes
+and rolls back if the block raises:
 
 ```python
 >>> with db.begin() as txn:
@@ -100,13 +100,14 @@ array([1.5 , 2.25, 3.75, 4.  , 5.  ])
 One transaction at a time
 -------------------------
 
-One transaction is open at a time, and `db.begin()` waits for the open one to
-finish before it returns. So finish each transaction before you open the next
-one. [Transactions and concurrency](../concepts/transactions_and_concurrency.md)
+A handle has one open transaction at a time, and `db.begin()` waits for the
+open one to finish before it returns. So finish each transaction before you
+open the next one.
+[Transactions and concurrency](../concepts/transactions-and-concurrency.md)
 explains why.
 
 Next steps
 ----------
 
-* [Crash recovery](crash_recovery.md) - see what a commit survives.
-* [Use transactions in C](../howto/use_transactions_in_c.md).
+* [Crash recovery](crash-recovery.md) - see what a commit survives.
+* [Use transactions in C](../guides/transactions-in-c.md).

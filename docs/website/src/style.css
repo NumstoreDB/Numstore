@@ -1,0 +1,162 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/space-grotesk/500.css';
+@import '@fontsource/space-grotesk/600.css';
+@import '@fontsource/space-grotesk/700.css';
+@import '@fontsource/jetbrains-mono/400.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+    background-color: theme('colors.bg');
+    color: theme('colors.fg');
+    font-family: theme('fontFamily.sans');
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: theme('fontFamily.display');
+    letter-spacing: -0.02em;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-fg ring-offset-2 ring-offset-bg;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-container px-6 sm:px-8;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 border border-fg px-5 py-2.5 text-sm font-semibold transition-colors min-h-[44px] focus-visible:ring-offset-bg;
+  }
+
+  .btn-primary {
+    @apply btn bg-fg text-bg hover:bg-transparent hover:text-fg;
+  }
+
+  .btn-secondary {
+    @apply btn border-border bg-transparent text-fg hover:border-fg;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold transition-colors min-h-[44px] bg-transparent text-fg hover:text-muted;
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 border border-border px-3 py-1 text-xs font-medium uppercase tracking-widest text-muted;
+  }
+}
+
+/* Pages rendered from the Markdown in docs/ (see plugins/content.ts).
+   Not in a @layer: Tailwind drops layered rules whose class it does not see
+   in src/, and .doc is only set by the plugin. */
+.doc {
+  @apply text-[15px] leading-7 text-fg;
+}
+
+.doc h1 {
+  @apply mb-6 text-3xl font-bold sm:text-4xl;
+}
+
+.doc h2 {
+  @apply mb-4 mt-12 border-b border-border pb-2 text-2xl font-semibold;
+}
+
+.doc h3 {
+  @apply mb-3 mt-8 text-xl font-semibold;
+}
+
+.doc h4 {
+  @apply mb-2 mt-6 font-semibold;
+}
+
+.doc :is(h1, h2, h3, h4) {
+  scroll-margin-top: 5rem;
+}
+
+.doc :is(p, ul, ol, pre, table, blockquote) {
+  @apply my-4;
+}
+
+.doc ul {
+  @apply list-disc pl-6;
+}
+
+.doc ol {
+  @apply list-decimal pl-6;
+}
+
+.doc li {
+  @apply my-1;
+}
+
+.doc li > p {
+  @apply my-1;
+}
+
+.doc a {
+  @apply underline decoration-muted underline-offset-4 hover:decoration-fg;
+}
+
+.doc strong {
+  @apply font-semibold;
+}
+
+.doc code {
+  @apply bg-elevated px-1.5 py-0.5 font-mono text-[0.875em];
+}
+
+.doc pre {
+  @apply overflow-x-auto border border-border bg-elevated p-4 text-[13px] leading-6;
+}
+
+.doc pre code {
+  @apply bg-transparent p-0 text-[length:inherit];
+}
+
+.doc table {
+  @apply block w-full overflow-x-auto text-sm;
+}
+
+.doc :is(th, td) {
+  @apply border border-border px-3 py-2 text-left align-top;
+}
+
+.doc th {
+  @apply bg-elevated font-semibold;
+}
+
+.doc blockquote {
+  @apply border-l-2 border-border pl-4 text-muted;
+}
+
+.doc hr {
+  @apply my-8 border-border;
+}

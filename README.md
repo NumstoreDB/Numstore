@@ -56,15 +56,15 @@ creates a database file in your current directory.
 
 Next steps:
 
-* [**Getting started**](docs/GETTING_STARTED.md) - install Numstore and run
+* [**Getting started**](docs/getting-started.md) - install Numstore and run
   your first queries in Python or C.
-* [**Tutorials**](docs/index.md#tutorials) - the query language, transactions,
+* [**Tutorials**](docs/README.md#tutorials) - the query language, transactions,
   type sizes and crash recovery, step by step.
-* [**How-to guides**](docs/index.md#how-to-guides) - one task on each page:
-  build and link, handle errors, read in chunks, smart files, backups.
-* [**Concepts**](docs/index.md#concepts) - why Numstore exists, the type
+* [**Guides**](docs/README.md#guides) - one task on each page:
+  build and link, handle errors, read data, plans, backups.
+* [**Concepts**](docs/README.md#concepts) - why Numstore exists, the type
   system, transactions and concurrency, durability and errors.
-* [**Glossary**](docs/GLOSSARY.md) - the words that the documents use.
+* [**Glossary**](docs/glossary.md) - the words that the documents use.
 
 Also see the [C Quick Start](#c-quick-start) below.
 
@@ -161,10 +161,9 @@ prefix. `pkg-config` gives the include path and the archives in link order, and
 `-pthread -lm` on Linux. For a debug build, use
 `-B build/debug -DCMAKE_BUILD_TYPE=Debug` instead.
 
-[Build and link](docs/howto/build_and_link.md) shows how to link from CMake. The
-[how-to guides](docs/index.md#how-to-guides) have a complete program for
-queries, transactions, crash recovery, packed structs, prepared plans and smart
-files.
+[Build and link](docs/guides/build-and-link.md) shows how to link from CMake. The
+[guides](docs/README.md#guides) have a complete program for queries,
+transactions, crash recovery, packed structs and prepared plans.
 
 Developing
 ----------

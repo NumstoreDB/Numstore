@@ -1,4 +1,4 @@
-name: Docs
+name: Website
 
 on:
   push:
@@ -22,19 +22,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install pandoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y pandoc
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: docs/website/package-lock.json
 
       - uses: actions/configure-pages@v5
 
-      - name: Render docs
-        run: make docs
+      - name: Build site
+        run: make website-build
+
+      # The site routes in the browser. Pages serves 404.html for unknown
+      # paths, so a deep link like /docs/glossary still loads the app.
+      - name: Add SPA fallback
+        run: cp docs/website/dist/index.html docs/website/dist/404.html
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: build/docs/html
+          path: docs/website/dist
 
   deploy:
     needs: build

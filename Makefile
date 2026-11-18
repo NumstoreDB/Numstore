@@ -68,13 +68,20 @@ build/release/CMakeCache.txt:
 	cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release
 
 
-############ Docs
-.PHONY: docs
-docs: build/docs/CMakeCache.txt
-	cmake --build build/docs --target docs
+############ Website
+# docs/website renders the Markdown in docs/ into the site.
+# website: dev server with live reload. website-build: static site in dist/.
+WEBSITE := docs/website
 
-build/docs/CMakeCache.txt:
-	cmake -S . -B build/docs -DNUMSTORE_DOCS=ON
+.PHONY: website website-build
+website: $(WEBSITE)/node_modules/.package-lock.json
+	cd $(WEBSITE) && npm run dev
+
+website-build: $(WEBSITE)/node_modules/.package-lock.json
+	cd $(WEBSITE) && npm run build
+
+$(WEBSITE)/node_modules/.package-lock.json: $(WEBSITE)/package-lock.json
+	cd $(WEBSITE) && npm ci
 
 
 ############ Code Coverage

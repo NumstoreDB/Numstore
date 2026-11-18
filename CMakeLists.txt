@@ -86,12 +86,3 @@ foreach(sample IN LISTS NUMSTORE_SAMPLES)
     add_executable(${name} ${sample})
     target_link_libraries(${name} PRIVATE ns_numstore)
 endforeach()
-
-#####################################################################
-### docs
-### Off by default: the HTML site needs pandoc, which a code build does not.
-option(NUMSTORE_DOCS "Render docs/ to HTML with pandoc" OFF)
-
-if(NUMSTORE_DOCS)
-    add_subdirectory(docs)
-endif()

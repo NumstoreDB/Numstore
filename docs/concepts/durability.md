@@ -1,37 +1,33 @@
-Durability and Crash Recovery
+Durability and crash recovery
 =============================
 
 The commit is the durability point
 ----------------------------------
 
-`commit()` is the durability point. When it returns, the data is on disk and a
-crash cannot take it back. `db.close()` is still worth calling on a clean exit,
-but it isn't what makes committed data durable.
+After `commit()` returns, your data is on disk and a crash can't take it back.
+A query you run without a transaction gets an automatic one, so it's durable by
+the time the call returns too.
 
-Three facts the API guarantees:
-
-* `commit()` is the durability point. When it returns, the data is on disk.
-* A query with no transaction gets an automatic one, so it is durable by the
-  time the call returns too.
-* `close()` flushes and leaves nothing to recover, but it is **not** what makes
-  committed data durable - `commit()` already did that. A process killed between
-  `commit()` and `close()` loses nothing.
+Call `db.close()` on a clean exit. It flushes and leaves nothing to recover on
+the next open. Closing isn't what makes committed data durable - `commit()`
+already did that. If a process dies between
+`commit()` and `close()`, it loses nothing.
 
 How recovery works
 ------------------
 
-Numstore writes ahead to a log and recovers with ARIES on the next open: work
-from a committed transaction is redone, work from a transaction that never
-committed is undone. There is no third outcome, which is the whole point - no
-state exists where half of a transaction is visible.
+Numstore writes ahead to a log, and on the next open it recovers with ARIES.
+Work from committed transactions is redone and work from transactions that
+never committed is undone. Those are the only two outcomes, so you never see
+half of a transaction.
 
-The same holds in C: a commit is durable the moment `ns_commit` returns, whether
-or not you get to call `ns_close`.
+C works the same way: a commit is durable the moment `ns_commit` returns, even
+if your program never calls `ns_close`.
 
-Recovery is automatic: `ns.Database(path)` and `ns_open` replay the log before
-your first query runs, and need no flag.
+You don't have to turn recovery on. `ns.Database(path)` and `ns_open` replay the
+log before your first query runs.
 
 To watch it happen, crash a process in the
-[crash recovery tutorial](../tutorials/crash_recovery.md). For what the files on
+[crash recovery tutorial](../tutorials/crash-recovery.md). For what the files on
 disk look like and how to copy them, see
-[Back up a database](../howto/back_up_a_database.md).
+[Back up a database](../guides/back-up-a-database.md).
