@@ -1,0 +1,9 @@
+[package]
+name = "nslang-rs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "nslang_rs"
+crate-type = ["staticlib", "rlib"]

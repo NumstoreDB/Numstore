@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-// The tests of ns_visit_variables (libs/algorithms/var). They need a whole
+// The tests of ns_visit_variables (libs/c/algorithms/var). They need a whole
 // database to visit, and ns_nsdb sits above ns_algorithms, so they live here
 
 #include "ns_error.h"

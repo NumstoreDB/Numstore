@@ -64,6 +64,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "common-rs"
+version = "0.1.0"
+
+[[package]]
 name = "either"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -127,6 +131,10 @@ dependencies = [
  "memchr",
  "minimal-lexical",
 ]
+
+[[package]]
+name = "nslang-rs"
+version = "0.1.0"
 
 [[package]]
 name = "numstore-rs"

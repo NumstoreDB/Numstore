@@ -31,26 +31,29 @@
 
 #include <stdbool.h>
 
-#define SUCCESS              0    // Operation completed successfully.
-#define ERR_IO               (-1) // Generic I/O error (read, write, or fsync failure).
-#define ERR_NOMEM            (-2) // Memory allocation failed.
-#define ERR_ARITH            (-3) // Integer arithmetic overflow detected.
-#define ERR_CORRUPT          (-4) // Corrupted data - user might've tampered with something
-#define ERR_INVALID_ARGUMENT (-5) // User provided an invalid argument
-#define ERR_PG_OUT_OF_RANGE  (-6)
-#define ERR_SYNTAX           (-7)
-#define ERR_INTERP           (-8)
-#define ERR_RPTREE_PAGE_STACK_OVERFLOW (-9)
-#define ERR_DUPLICATE_VARIABLE         (-10)
-#define ERR_VARIABLE_NE                (-11)
-#define ERR_DUPLICATE_COMMIT           (-12)
-#define ERR_UNHANDLED                  (-13)
-#define ERR_TOO_MANY_FILES             (-14)
-#define ERR_TOO_MANY_THREADS           (-15)
+enum err_code
+{
+  SUCCESS                        = 0,  // Operation completed successfully.
+  ERR_IO                         = -1, // Generic I/O error (read, write, or fsync failure).
+  ERR_NOMEM                      = -2, // Memory allocation failed.
+  ERR_ARITH                      = -3, // Integer arithmetic overflow detected.
+  ERR_CORRUPT                    = -4, // Corrupted data - user might've tampered with something
+  ERR_INVALID_ARGUMENT           = -5, // User provided an invalid argument
+  ERR_PG_OUT_OF_RANGE            = -6,
+  ERR_SYNTAX                     = -7,
+  ERR_INTERP                     = -8,
+  ERR_RPTREE_PAGE_STACK_OVERFLOW = -9,
+  ERR_DUPLICATE_VARIABLE         = -10,
+  ERR_VARIABLE_NE                = -11,
+  ERR_DUPLICATE_COMMIT           = -12,
+  ERR_UNHANDLED                  = -13,
+  ERR_TOO_MANY_FILES             = -14,
+  ERR_TOO_MANY_THREADS           = -15,
 
 #ifndef NDEBUG
-#  define ERR_CRASHED (-16)
+  ERR_CRASHED = -16,
 #endif
+};
 
 typedef int err_t;
 

@@ -1,9 +1,9 @@
 use std::env;
 
-// libs/numstore-sys/build.rs
+// libs/c/numstore-sys/build.rs
 fn main() {
     // Where numstore is defined
-    let numstore = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../numstore");
+    let numstore = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../c/numstore");
 
     // This is set from CMake - it's the directory of the numstore static library
     let lib = std::env::var("NUMSTORE_LIB_DIR").unwrap();
@@ -26,7 +26,7 @@ fn main() {
     }
 
     // Re generate on changed
-    println!("cargo:rerun-if-changed=../numstore/include/numstore.h");
+    println!("cargo:rerun-if-changed=../../c/numstore/include/numstore.h");
     println!("cargo:rerun-if-env-changed=NUMSTORE_LIB_DIR");
 
     bindgen::Builder::default()

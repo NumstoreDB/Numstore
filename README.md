@@ -6,7 +6,7 @@ Numstore
 Features:
 ---------
 - **Single File.** The whole database lives in a single file. There is no
-  server - see `libs/numstore/include/numstore.h`
+  server - see `libs/c/numstore/include/numstore.h`
 - **ACID.** Every insert, write and remove either happens completely or not at
   all, even if the process crashes partway through. Transactions are strictly
   serializable - one is open at a time - and crash recovery uses ARIES over a
@@ -144,7 +144,7 @@ cmake --build build/release
 
 What you get:
 
-* `libs/numstore/include/numstore.h`: the only header you need
+* `libs/c/numstore/include/numstore.h`: the only header you need
 * `build/release/lib/libns_*.a`: the library, as one static archive per layer
 * `build/release/bin/`: one binary per C sample in `samples/`, plus `ns_simtest`
 
@@ -170,25 +170,25 @@ Developing
 
 The C code is a stack of static libraries under `libs/`, one directory each. A
 library's headers sit next to its sources, and its directory is its include
-directory, so `#include "ns_page.h"` names a file in `libs/page/` and
-`#include "pager/ns_pager.h"` one in `libs/nscore/`. Each library
+directory, so `#include "ns_page.h"` names a file in `libs/c/page/` and
+`#include "pager/ns_pager.h"` one in `libs/c/nscore/`. Each library
 links to the ones it includes from, and nothing links upward:
 
 | Directory          | Library         | What it holds                                                           | Links to                                   |
 | ------------------ | --------------- | ----------------------------------------------------------------------- | ------------------------------------------ |
-| `libs/common/`     | `ns_common`     | data structures, errors, logging, the test framework, `os/`             | -                                          |
-| `libs/page/`       | `ns_page`       | the page formats                                                        | `common`                                   |
-| `libs/nslang/`     | `ns_types`      | the query language: lexer, parsers, types, variables                    | `common`, `page`                           |
-| `libs/disk_pager/` | `ns_disk_pager` | page sized reads and writes on the database file                        | `common`                                   |
-| `libs/disk_wal/`   | `ns_disk_wal`   | byte streams on the WAL file                                            | `common`                                   |
-| `libs/nscore/`     | `ns_nscore`     | `txn_table/`, `lock_table/`, `dpg_table/`, `wal/`, `pager/`             | `common`, `page`, `disk_pager`, `disk_wal` |
-| `libs/algorithms/` | `ns_algorithms` | what a query does to pages: `var/`, `rope/`, `numstore/`, `smartfiles/` | `page`, `nslang`, `nscore`                 |
-| `libs/nsdb/`       | `ns_nsdb`       | the database handle: open, close, transactions, plans                   | `page`, `nslang`, `nscore`, `algorithms`   |
-| `libs/numstore/`   | `ns_numstore`   | the public `ns_*` API, and the tests that need a database               | `nsdb` and what it needs                   |
+| `libs/c/common/`     | `ns_common`     | data structures, errors, logging, the test framework, `os/`             | -                                          |
+| `libs/c/page/`       | `ns_page`       | the page formats                                                        | `common`                                   |
+| `libs/c/nslang/`     | `ns_types`      | the query language: lexer, parsers, types, variables                    | `common`, `page`                           |
+| `libs/c/disk_pager/` | `ns_disk_pager` | page sized reads and writes on the database file                        | `common`                                   |
+| `libs/c/disk_wal/`   | `ns_disk_wal`   | byte streams on the WAL file                                            | `common`                                   |
+| `libs/c/nscore/`     | `ns_nscore`     | `txn_table/`, `lock_table/`, `dpg_table/`, `wal/`, `pager/`             | `common`, `page`, `disk_pager`, `disk_wal` |
+| `libs/c/algorithms/` | `ns_algorithms` | what a query does to pages: `var/`, `rope/`, `numstore/`, `smartfiles/` | `page`, `nslang`, `nscore`                 |
+| `libs/c/nsdb/`       | `ns_nsdb`       | the database handle: open, close, transactions, plans                   | `page`, `nslang`, `nscore`, `algorithms`   |
+| `libs/c/numstore/`   | `ns_numstore`   | the public `ns_*` API, and the tests that need a database               | `nsdb` and what it needs                   |
 
-Only `ns_numstore` has a public header, `libs/numstore/include/numstore.h`.
-Everything else is private to the build. `libs/numstore-rs/` and
-`libs/pynumstore/` are the Rust and Python bindings.
+Only `ns_numstore` has a public header, `libs/c/numstore/include/numstore.h`.
+Everything else is private to the build. `libs/rust/numstore-rs/` and
+`libs/python/pynumstore/` are the Rust and Python bindings.
 
 The root `CMakeLists.txt` builds everything, and `make` wraps the cmake
 invocations so the flags live in one place:

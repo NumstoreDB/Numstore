@@ -827,7 +827,7 @@ class TestDeleteVerb:
     """`delete [if exists] <name>` and `get if exists <name>`.
 
     Both are in the grammar (parse_query_delete / parse_query_get in
-    libs/nslang/parsers/ns_parse_query.c) and neither had a Python
+    libs/c/nslang/parsers/ns_parse_query.c) and neither had a Python
     test before this file.
     """
 

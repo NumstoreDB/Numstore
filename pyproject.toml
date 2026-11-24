@@ -27,7 +27,7 @@ regex = '^v?(?P<value>\S+)'
 [tool.scikit-build]
 cmake.source-dir = "."
 cmake.build-type = "Release"
-wheel.packages = ["libs/pynumstore/src/pynumstore"]
+wheel.packages = ["libs/python/pynumstore/src/pynumstore"]
 install.components = ["python"]
 build-dir = "build/wheel/{wheel_tag}"
 
@@ -39,12 +39,12 @@ skip = [
     "cp310-win_arm64",
 ]
 test-extras = ["test"]
-test-sources = ["libs/pynumstore/tests", "pyproject.toml", "version.txt"]
-test-command = "python -m pytest libs/pynumstore/tests"
+test-sources = ["libs/python/pynumstore/tests", "pyproject.toml", "version.txt"]
+test-command = "python -m pytest libs/python/pynumstore/tests"
 
 [tool.pytest.ini_options]
-testpaths = ["libs/pynumstore/tests"]
-pythonpath = ["libs/pynumstore/tests"]
+testpaths = ["libs/python/pynumstore/tests"]
+pythonpath = ["libs/python/pynumstore/tests"]
 addopts = ["--import-mode=importlib"]
 # Test modules are named after the pynumstore module they cover (database.py,
 # query.py, ...), not test_*.py, so collection needs every file in testpaths.

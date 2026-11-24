@@ -10,19 +10,19 @@ OS_BACKENDS = ["posix", "windows"]
 def gen_tests(template_path, output_path, platform):
     pattern = re.compile(r"TEST\s*\(\s*(\w+)\s*\)")
 
-    skip = [Path("../libs/common/os") / b for b in OS_BACKENDS if b != platform]
+    skip = [Path("../libs/c/common/os") / b for b in OS_BACKENDS if b != platform]
 
     tests = []
     for root in [
-        "../libs/common",
-        "../libs/page",
-        "../libs/nslang",
-        "../libs/disk_pager",
-        "../libs/disk_wal",
-        "../libs/nscore",
-        "../libs/algorithms",
-        "../libs/nsdb",
-        "../libs/numstore",
+        "../libs/c/common",
+        "../libs/c/page",
+        "../libs/c/nslang",
+        "../libs/c/disk_pager",
+        "../libs/c/disk_wal",
+        "../libs/c/nscore",
+        "../libs/c/algorithms",
+        "../libs/c/nsdb",
+        "../libs/c/numstore",
     ]:
         root = Path(root)
         if not root.exists():

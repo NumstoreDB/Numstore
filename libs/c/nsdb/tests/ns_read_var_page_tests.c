@@ -12,7 +12,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-// The tests of ns_read_var_page (libs/algorithms/var). They create real
+// The tests of ns_read_var_page (libs/c/algorithms/var). They create real
 // variables to read back, and ns_nsdb sits above ns_algorithms, so they live
 // here
 

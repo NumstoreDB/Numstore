@@ -51,7 +51,7 @@ if(SKBUILD)
         _pynumstore
         MODULE
         WITH_SOABI
-        libs/pynumstore/ns_pynumstore.c
+        libs/python/pynumstore/ns_pynumstore.c
     )
     # pynumstore sits on the nsdb layer, not on the public ns_* api, so it
     # needs ns_nsdb (and what that links to) and nothing of ns_numstore
@@ -79,10 +79,4 @@ add_subdirectory(apps)
 
 #####################################################################
 ### samples
-file(GLOB NUMSTORE_SAMPLES CONFIGURE_DEPENDS samples/*.c)
-
-foreach(sample IN LISTS NUMSTORE_SAMPLES)
-    get_filename_component(name ${sample} NAME_WE)
-    add_executable(${name} ${sample})
-    target_link_libraries(${name} PRIVATE ns_numstore)
-endforeach()
+add_subdirectory(samples)

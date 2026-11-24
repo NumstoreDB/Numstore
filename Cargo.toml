@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["libs/numstore-rs"]
+members = ["libs/rust/numstore-rs", "libs/rust/common-rs", "libs/rust/nslang-rs"]
 
 [workspace.package]
 version = "0.1.0"

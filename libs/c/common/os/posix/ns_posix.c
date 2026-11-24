@@ -332,7 +332,7 @@ sys_writev_all (void *self, struct bytes *iov, const int iovcnt, error *e)
   const int fd = fd_of (self);
 
   ASSERT (iov);
-  ASSERT (iovcnt > 0 && iovcnt <= 2);
+  ASSERT (iovcnt > 0 && iovcnt <= 2 && "writev all caps maximum buffers to avoid dynamic memory allocation. Ensure number of iov are less than this cap");
 
   // Work on a copy so the caller's buffers aren't advanced under them
   struct bytes local[2];

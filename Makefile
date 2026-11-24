@@ -198,7 +198,7 @@ leaks-simtest: build/memcheck/bin/ns_simtest
 #############################################
 ### pynumstore
 
-PKG_PY_SRCS     := $(shell find libs/pynumstore -name '*.py' -o -name "*.pyi")
+PKG_PY_SRCS     := $(shell find libs/python/pynumstore -name '*.py' -o -name "*.pyi")
 PKG_NATIVE_SRCS := $(shell find . \( -name '*.c' -o -name '*.h' -o -name '*.cmake' -o -name 'CMakeLists.txt' \) -not -path '*build*')
 
 build/python/.installed: $(PKG_PY_SRCS) $(PKG_NATIVE_SRCS) pyproject.toml version.txt
@@ -214,7 +214,7 @@ python-reinstall:
 	rm -rf build/python build/wheel
 	$(MAKE) python-install
  
-# The package is in libs/pynumstore/src, so the tests import the installed one.
+# The package is in libs/python/pynumstore/src, so the tests import the installed one.
 .PHONY: test-python
 test-python: python-install
 	python3 -m pytest -ra --tb=short

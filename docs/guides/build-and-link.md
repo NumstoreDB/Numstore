@@ -2,7 +2,7 @@ Build and link the C library
 ============================
 
 Numstore is a C11 library with one public header,
-`libs/numstore/include/numstore.h`, and a set of static archives that you link
+`libs/c/numstore/include/numstore.h`, and a set of static archives that you link
 together. It has no dependencies beyond libc, pthreads and libm.
 
 Build
