@@ -16,8 +16,6 @@ list(
     ${CMAKE_CURRENT_SOURCE_DIR}/0014_type_size_overflow.c
     ${CMAKE_CURRENT_SOURCE_DIR}/0015_crash_with_txn_open_across_checkpoint.c
     ${CMAKE_CURRENT_SOURCE_DIR}/0016_crash_recovery_past_buffer_pool.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/0017_smfile_write_across_end.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/0018_smfile_stride_past_end.c
     ${CMAKE_CURRENT_SOURCE_DIR}/0019_insert_short_source_buffer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/0020_read_into_partial_element_buffer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/0021_query_trailing_text.c

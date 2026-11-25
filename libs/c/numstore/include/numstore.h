@@ -50,10 +50,6 @@ typedef int64_t          sb_size; // Signed b_size
 nsdb_t *ns_open (const char *path);
 nsdb_t *ns_open_with_error (const char *path, char erstr[], unsigned elen);
 
-// Open a Smart file
-nsdb_t *ns_smfile_open (const char *path);
-nsdb_t *ns_smfile_open_with_error (const char *path, char erstr[], unsigned elen);
-
 // Remove a numstore or smart file at [path]
 int ns_cleanup (const char *path);
 
@@ -263,115 +259,5 @@ sb_size ns_plan_write (nsdb_plan_t *plan, nsdb_txn_t *tx, const void *src, b_siz
  */
 void *ns_malloc (nsdb_t *db, nsdb_txn_t *txn, b_size *dlen, const char *fmt, ...);
 void *ns_plan_malloc (nsdb_plan_t *plan, nsdb_txn_t *tx, b_size *dlen);
-
-//////////////////////////////////// Smartfiles Execution patterns
-
-/**
- * Returns the size of a smart file under the view of transaction [tx]
- */
-sb_size ns_smfile_size (nsdb_t *smf, nsdb_txn_t *tx);
-
-/**
- * Insert array [src] into index [bofst] into the smart file
- * insert doesn't care about [size], everything is in terms of
- * "bytes", not "elements"
- *
- * smf:         [0, 1, 2, 3, 4, 5]
- * src:         [6, 7, 8]
- * bofst:       3
- * slen:        sizeof(src) = 3
- *
- * insert(smf, tx, src, bofst, 3)
- *
- * smf:         [0, 1, 2, 6, 7, 8, 3, 4, 5]
- */
-sb_size ns_smfile_insert (nsdb_t *smf, nsdb_txn_t *tx, const void *src, sb_size bofst, b_size slen);
-
-/**
- * Overwrite array with [src] - optionally provide size > 1 byte to
- * indicate that the elements you're writing are bigger than 1 byte.
- * Specify stride to "skip" elements within the file
- *
- * smf:         (u32[])[0, 1, 2, 3, 4, 5]
- * src:         (u32[])[6, 7, 8]        an array
- * size:        4                       sizeof(u32) size of each "element" in
- * bytes bofst:       4                       starting _byte_ offset stride: 2
- * "elements" to skip each write nelem:       3 sizeof(src) / size
- *
- * write(smf, tx, src, bofst, stride, nelem)
- *
- * smf:         [0, 6, 2, 7, 4, 8]
- *
- * Errors:
- *  * If the combination of (src, size, bofst, stride, nelem) would go off the
- *    end of the file - TODO.
- */
-sb_size ns_smfile_write (
-    nsdb_t     *smf,
-    nsdb_txn_t *tx,
-    const void *src,
-    t_size      size,
-    sb_size     bofst,
-    sb_size     stride,
-    b_size      nelem
-);
-
-/**
- * Read into with [dest] - optionally provide size > 1 byte to
- * indicate that the elements you're writing are bigger than 1 byte.
- * Specify stride to "skip" elements within the file
- *
- * smf:         (u32[])[0, 1, 2, 3, 4, 5]
- * dest:        (u32[])[_, _, _]        an array
- * size:        4                       sizeof(u32) size of each "element" in
- * bytes bofst:       4                       starting _byte_ offset stride: 2
- * "elements" to skip each write nelem:       3 sizeof(src) / size
- *
- * read(smf, tx, src, bofst, stride, nelem)
- *
- * dest:        [1, 3, 5]
- *
- * Errors:
- *  * TODO
- */
-sb_size ns_smfile_read (
-    nsdb_t     *smf,
-    nsdb_txn_t *tx,
-    void       *dest,
-    t_size      size,
-    sb_size     bofst,
-    sb_size     stride,
-    b_size      nelem
-);
-
-/**
- * Remove data from the database and optionally write the removed data into
- * [dest] optionally provide size > 1 byte to indicate that the elements you're
- * writing are bigger than 1 byte. Specify stride to "skip" elements within the
- * file
- *
- * smf:         (u32[])[0, 1, 2, 3, 4, 5]
- * dest:        (u32[])[_, _, _]        an array
- * size:        4                       sizeof(u32) size of each "element" in
- * bytes bofst:       4                       starting _byte_ offset stride: 2
- * "elements" to skip each write nelem:       3 sizeof(src) / size
- *
- * remove(smf, tx, src, bofst, stride, nelem)
- *
- * smf:         (u32[])[0, 2, 4]
- * dest:        [1, 3, 5]
- *
- * Errors:
- *  * TODO
- */
-sb_size ns_smfile_remove (
-    nsdb_t     *smf,
-    nsdb_txn_t *tx,
-    void       *dest,
-    t_size      size,
-    sb_size     bofst,
-    sb_size     stride,
-    b_size      nelem
-);
 
 #endif

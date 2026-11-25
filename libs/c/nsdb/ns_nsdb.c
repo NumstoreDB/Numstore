@@ -26,7 +26,6 @@
 #include "os/ns_malloc.h"
 #include "os/ns_os.h"
 #include "pager/ns_pager.h"
-#include "smartfiles/ns_smartfiles_algorithms.h"
 #include "types/ns_query.h"
 #include "types/ns_types.h"
 #include "types/ns_variables.h"
@@ -104,13 +103,6 @@ nsdb_init_numstore (struct nsdb *db, error *e)
 {
   DBG_ASSERT (nsdb, db);
   return numstore_init_pager (db->p, e);
-}
-
-err_t
-nsdb_init_smartfiles (struct nsdb *db, error *e)
-{
-  DBG_ASSERT (nsdb, db);
-  return smartfiles_init_pager (db->p, e);
 }
 
 err_t
@@ -1981,145 +1973,4 @@ nsdb_console (struct nsdb *db, const char *query, error *e)
   nsdb_plan_free (plan);
 
   return ret;
-}
-
-// Smart files patterns
-sb_size
-nsdb_smfile_size (struct nsdb *db, struct nsdb_txn *user_tx)
-{
-  DBG_ASSERT (nsdb, db);
-
-  error            _e = error_create ();
-  error           *e  = &_e;
-
-  struct nsdb_txn *tx = nsdb_auto_begin (db, user_tx, e);
-  if (tx == NULL) {
-    return nsdb_report_error (db, NULL, e);
-  }
-
-  ALLOC_INIT (temp);
-  sb_size ret = smartfiles_size (db->p, &tx->tx, &temp, e);
-  ALLOC_CLOSE (temp);
-
-  return nsdb_auto_finish (db, user_tx, tx, ret, e);
-}
-
-sb_size
-nsdb_smfile_insert (
-    struct nsdb     *db,
-    struct nsdb_txn *user_tx,
-    const void      *src,
-    sb_size          bofst,
-    b_size           slen
-)
-{
-  DBG_ASSERT (nsdb, db);
-
-  error  _e = error_create ();
-  error *e  = &_e;
-  istream_create_from (input, src, slen);
-
-  struct nsdb_txn *tx = nsdb_auto_begin (db, user_tx, e);
-  if (tx == NULL) {
-    return nsdb_report_error (db, NULL, e);
-  }
-
-  ALLOC_INIT (temp);
-  sb_size ret = smartfiles_insert (db->p, &tx->tx, &input, bofst, slen, &temp, e);
-  ALLOC_CLOSE (temp);
-
-  return nsdb_auto_finish (db, user_tx, tx, ret, e);
-}
-
-sb_size
-nsdb_smfile_write (
-    struct nsdb     *db,
-    struct nsdb_txn *user_tx,
-    const void      *src,
-    t_size           size,
-    sb_size          bofst,
-    sb_size          stride,
-    b_size           nelem
-)
-{
-  DBG_ASSERT (nsdb, db);
-
-  error  _e = error_create ();
-  error *e  = &_e;
-  istream_create_from (input, src, nelem * size);
-
-  struct nsdb_txn *tx = nsdb_auto_begin (db, user_tx, e);
-  if (tx == NULL) {
-    return nsdb_report_error (db, NULL, e);
-  }
-
-  ALLOC_INIT (temp);
-  sb_size ret = smartfiles_write (db->p, &tx->tx, &input, size, bofst, stride, nelem, &temp, e);
-  ALLOC_CLOSE (temp);
-
-  return nsdb_auto_finish (db, user_tx, tx, ret, e);
-}
-
-sb_size
-nsdb_smfile_read (
-    struct nsdb     *db,
-    struct nsdb_txn *user_tx,
-    void            *dest,
-    t_size           size,
-    sb_size          bofst,
-    sb_size          stride,
-    b_size           nelem
-)
-{
-  DBG_ASSERT (nsdb, db);
-
-  error  _e = error_create ();
-  error *e  = &_e;
-  ostream_create_from (output, dest, nelem * size);
-
-  struct nsdb_txn *tx = nsdb_auto_begin (db, user_tx, e);
-  if (tx == NULL) {
-    return nsdb_report_error (db, NULL, e);
-  }
-
-  ALLOC_INIT (temp);
-  sb_size ret = smartfiles_read (db->p, &tx->tx, &output, size, bofst, stride, nelem, &temp, e);
-  ALLOC_CLOSE (temp);
-
-  return nsdb_auto_finish (db, user_tx, tx, ret, e);
-}
-
-sb_size
-nsdb_smfile_remove (
-    struct nsdb     *db,
-    struct nsdb_txn *user_tx,
-    void            *dest,
-    t_size           size,
-    sb_size          bofst,
-    sb_size          stride,
-    b_size           nelem
-)
-{
-  DBG_ASSERT (nsdb, db);
-
-  error                  _e     = error_create ();
-  error                 *e      = &_e;
-  struct stream         *output = NULL;
-  struct stream          _output;
-  struct stream_obuf_ctx ctx;
-  if (dest != NULL) {
-    stream_obuf_init (&_output, &ctx, dest, nelem * size);
-    output = &_output;
-  }
-
-  struct nsdb_txn *tx = nsdb_auto_begin (db, user_tx, e);
-  if (tx == NULL) {
-    return nsdb_report_error (db, NULL, e);
-  }
-
-  ALLOC_INIT (temp);
-  sb_size ret = smartfiles_remove (db->p, &tx->tx, output, size, bofst, stride, nelem, &temp, e);
-  ALLOC_CLOSE (temp);
-
-  return nsdb_auto_finish (db, user_tx, tx, ret, e);
 }

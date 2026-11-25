@@ -316,41 +316,4 @@ sb_size nsdb_plan_write (struct nsdb_plan *st, struct nsdb_txn *tx, const void *
 err_t nsdb_console (struct nsdb *db, const char *query, error *e);
 err_t nsdb_plan_console (struct nsdb_plan *st, error *e);
 
-// Smart files patterns
-sb_size nsdb_smfile_size (struct nsdb *smf, struct nsdb_txn *tx);
-sb_size nsdb_smfile_insert (
-    struct nsdb     *smf,
-    struct nsdb_txn *tx,
-    const void      *src,
-    sb_size          bofst,
-    b_size           slen
-);
-sb_size nsdb_smfile_write (
-    struct nsdb     *smf,
-    struct nsdb_txn *tx,
-    const void      *src,
-    t_size           size,
-    sb_size          bofst,
-    sb_size          stride,
-    b_size           nelem
-);
-sb_size nsdb_smfile_read (
-    struct nsdb     *smf,
-    struct nsdb_txn *tx,
-    void            *dest,
-    t_size           size,
-    sb_size          bofst,
-    sb_size          stride,
-    b_size           nelem
-);
-sb_size nsdb_smfile_remove (
-    struct nsdb     *smf,
-    struct nsdb_txn *tx,
-    void            *dest,
-    t_size           size,
-    sb_size          bofst,
-    sb_size          stride,
-    b_size           nelem
-);
-
 #endif // NSHANDLE_H

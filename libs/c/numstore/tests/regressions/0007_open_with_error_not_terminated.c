@@ -13,7 +13,6 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 
-#include "ns_stdtypes.h"
 #include "numstore.h"
 
 #include <string.h>
@@ -47,15 +46,6 @@ TEST (0007_open_with_error_not_terminated)
 
     test_assert (ns_open_with_error ("/no/such/dir/db", erstr, sizeof erstr) == NULL);
     test_assert_int_equal (erstr[3], '\0');
-  }
-
-  TEST_CASE ("ns_smfile_open_with_error terminates the message")
-  {
-    char erstr[MAX_ERRSTR_LEN];
-    memset (erstr, 'x', sizeof erstr);
-
-    test_assert (ns_smfile_open_with_error ("/no/such/dir/db", erstr, sizeof erstr) == NULL);
-    test_assert (memchr (erstr, '\0', sizeof erstr) != NULL);
   }
 }
 #endif

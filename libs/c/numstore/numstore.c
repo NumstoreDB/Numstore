@@ -21,7 +21,6 @@
 #include "numstore/ns_numstore_algorithms.h"
 #include "os/ns_malloc.h"
 #include "os/ns_os.h"
-#include "smartfiles/ns_smartfiles_algorithms.h"
 #include "types/ns_variables.h"
 #include "var/ns_var_algorithms.h"
 
@@ -84,55 +83,6 @@ ns_open_with_error (const char *path, char erstr[], unsigned elen)
 {
   error   e   = error_create ();
   nsdb_t *ret = ns_open_common (path, &e);
-  if (ret == NULL) {
-    ns_copy_errstr (erstr, elen, &e);
-    return NULL;
-  }
-  return ret;
-}
-
-static nsdb_t *
-ns_smfile_open_common (const char *path, error *e)
-{
-  struct i_mem mem = default_mem ();
-
-  // The public API owns the OS it hands to the database - ns_close/ns_crash
-  // free it again
-  struct i_os  os;
-  if (system_os_create (mem, &os, e) < 0) {
-    return NULL;
-  }
-
-  struct nsdb *db = nsdb_open (path, mem, os, e);
-
-  if (db == NULL) {
-    system_os_free (os);
-    return NULL;
-  }
-
-  if (smartfiles_init_pager (db->p, e) < 0) {
-    nsdb_close (db, e);
-    system_os_free (os);
-    return NULL;
-  }
-
-  nsdb_allow_auto_txn (db);
-
-  return db;
-}
-
-nsdb_t *
-ns_smfile_open (const char *path)
-{
-  error e = error_create ();
-  return ns_smfile_open_common (path, &e);
-}
-
-nsdb_t *
-ns_smfile_open_with_error (const char *path, char erstr[], unsigned elen)
-{
-  error   e   = error_create ();
-  nsdb_t *ret = ns_smfile_open_common (path, &e);
   if (ret == NULL) {
     ns_copy_errstr (erstr, elen, &e);
     return NULL;
@@ -482,60 +432,6 @@ sb_size
 ns_plan_write (nsdb_plan_t *plan, nsdb_txn_t *tx, const void *src, b_size dlen)
 {
   return nsdb_plan_write (plan, tx, src, dlen);
-}
-
-sb_size
-ns_smfile_size (nsdb_t *smf, nsdb_txn_t *tx)
-{
-  return nsdb_smfile_size (smf, tx);
-}
-
-sb_size
-ns_smfile_insert (nsdb_t *smf, nsdb_txn_t *tx, const void *src, sb_size bofst, b_size slen)
-{
-  return nsdb_smfile_insert (smf, tx, src, bofst, slen);
-}
-
-sb_size
-ns_smfile_read (
-    nsdb_t     *smf,
-    nsdb_txn_t *tx,
-    void       *dest,
-    t_size      size,
-    sb_size     bofst,
-    sb_size     stride,
-    b_size      nelem
-)
-{
-  return nsdb_smfile_read (smf, tx, dest, size, bofst, stride, nelem);
-}
-
-sb_size
-ns_smfile_remove (
-    nsdb_t     *smf,
-    nsdb_txn_t *tx,
-    void       *dest,
-    t_size      size,
-    sb_size     bofst,
-    sb_size     stride,
-    b_size      nelem
-)
-{
-  return nsdb_smfile_remove (smf, tx, dest, size, bofst, stride, nelem);
-}
-
-sb_size
-ns_smfile_write (
-    nsdb_t     *smf,
-    nsdb_txn_t *tx,
-    const void *src,
-    t_size      size,
-    sb_size     bofst,
-    sb_size     stride,
-    b_size      nelem
-)
-{
-  return nsdb_smfile_write (smf, tx, src, size, bofst, stride, nelem);
 }
 
 #ifndef NDEBUG
@@ -889,102 +785,6 @@ TEST (ns_api_crash)
   }
 
   test_assert_int_equal (ns_cleanup (NS_T_CRASH), 0);
-}
-
-TEST (ns_api_smfile_open_and_close)
-{
-  test_assert_int_equal (ns_cleanup (NS_T_SMF), 0);
-
-  TEST_CASE ("ns_smfile_open then ns_close")
-  {
-    nsdb_t *smf = ns_smfile_open (NS_T_SMF);
-    test_assert (smf != NULL);
-    test_assert_int_equal (ns_close (smf), 0);
-  }
-
-  TEST_CASE ("ns_smfile_open_with_error on a good path")
-  {
-    char    erstr[256] = {0};
-    nsdb_t *smf        = ns_smfile_open_with_error (NS_T_SMF, erstr, sizeof erstr);
-    test_assert (smf != NULL);
-    test_assert_int_equal (ns_close (smf), 0);
-  }
-
-  TEST_CASE ("ns_smfile_open_with_error reports why a bad path failed")
-  {
-    char    erstr[256] = {0};
-    nsdb_t *smf        = ns_smfile_open_with_error (
-        "ns_api_no_such_directory_xyz/smf",
-        erstr,
-        sizeof erstr
-    );
-    test_assert_ptr_equal (smf, NULL);
-    test_assert (strnlen (erstr, MAX_ERRSTR_LEN) > 0);
-  }
-
-  test_assert_int_equal (ns_cleanup (NS_T_SMF), 0);
-}
-
-TEST (ns_api_smfile_operations)
-{
-  test_assert_int_equal (ns_cleanup (NS_T_SMF), 0);
-
-  nsdb_t *smf = ns_smfile_open (NS_T_SMF);
-  test_assert (smf != NULL);
-
-  TEST_CASE ("A fresh smart file is empty")
-  {
-    test_assert_int_equal ((int)ns_smfile_size (smf, NULL), 0);
-  }
-
-  TEST_CASE ("ns_smfile_insert appends bytes")
-  {
-    test_assert_int_equal ((int)ns_smfile_insert (smf, NULL, "hello world", 0, 11), 11);
-    test_assert_int_equal ((int)ns_smfile_size (smf, NULL), 11);
-  }
-
-  TEST_CASE ("ns_smfile_read reads the whole file")
-  {
-    char got[16] = {0};
-    test_assert_int_equal ((int)ns_smfile_read (smf, NULL, got, 1, 0, 1, NS_END), 11);
-    test_assert_memequal (got, "hello world", 11);
-  }
-
-  TEST_CASE ("ns_smfile_write overwrites in place")
-  {
-    test_assert_int_equal ((int)ns_smfile_write (smf, NULL, "WORLD", 1, 6, 1, 5), 5);
-
-    char got[16] = {0};
-    test_assert_int_equal ((int)ns_smfile_read (smf, NULL, got, 1, 0, 1, NS_END), 11);
-    test_assert_memequal (got, "hello WORLD", 11);
-  }
-
-  TEST_CASE ("ns_smfile_remove takes bytes out and hands them back")
-  {
-    char evicted[8] = {0};
-    test_assert_int_equal ((int)ns_smfile_remove (smf, NULL, evicted, 1, 0, 1, 6), 6);
-    test_assert_memequal (evicted, "hello ", 6);
-
-    test_assert_int_equal ((int)ns_smfile_size (smf, NULL), 5);
-
-    char got[8] = {0};
-    test_assert_int_equal ((int)ns_smfile_read (smf, NULL, got, 1, 0, 1, NS_END), 5);
-    test_assert_memequal (got, "WORLD", 5);
-  }
-
-  TEST_CASE ("Smart file writes take part in transactions")
-  {
-    nsdb_txn_t *tx = ns_begin (smf);
-    test_assert (tx != NULL);
-
-    test_assert_int_equal ((int)ns_smfile_insert (smf, tx, "!!", 5, 2), 2);
-    test_assert_int_equal (ns_commit (smf, tx), 0);
-
-    test_assert_int_equal ((int)ns_smfile_size (smf, NULL), 7);
-  }
-
-  test_assert_int_equal (ns_close (smf), 0);
-  test_assert_int_equal (ns_cleanup (NS_T_SMF), 0);
 }
 
 TEST (ns_api_error_reporting)
