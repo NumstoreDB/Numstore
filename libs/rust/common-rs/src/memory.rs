@@ -29,6 +29,7 @@ impl<'a> Mem<'a> {
         let raw = create(e, |d, ep| unsafe {
             faulty_mem_create(delegate.raw, 0.0, d, ep)
         })?;
+
         Ok(Self {
             raw,
             is_faulty: true,
@@ -52,7 +53,14 @@ impl<'a> Mem<'a> {
         self.alloc_result(p, size.into(), len.into(), e)
     }
 
-    pub fn calloc(&self, size: NonZeroU32, len: NonZeroU32, e: &mut Error) -> Result<Block<'_>> {
+    pub fn calloc<S, L>(&self, size: S, len: L, e: &mut Error) -> Result<Block<'_>>
+    where
+        S: Into<NonZeroU32>,
+        L: Into<NonZeroU32>,
+    {
+        let size = size.into();
+        let len = len.into();
+
         // Call the c function
         let p = unsafe {
             ((*self.raw.table).calloc)(self.raw.self_, len.into(), size.into(), e.as_mut_ptr())
@@ -124,7 +132,14 @@ pub struct Block<'m> {
 }
 
 impl<'a> Block<'a> {
-    pub fn realloc(&mut self, size: NonZeroU32, len: NonZeroU32, e: &mut Error) -> Result<()> {
+    pub fn realloc<S, L>(&mut self, size: S, len: L, e: &mut Error) -> Result<()>
+    where
+        S: Into<NonZeroU32>,
+        L: Into<NonZeroU32>,
+    {
+        let size = size.into();
+        let len = len.into();
+
         let p = unsafe {
             ((*self.mem.raw.table).realloc)(
                 self.mem.raw.self_,

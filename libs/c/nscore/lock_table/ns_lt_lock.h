@@ -25,8 +25,7 @@ struct lt_lock
   enum lt_lock_type
   {
     LOCK_DB,
-    LOCK_VHMAP,    // -> LOCK_DB
-    LOCK_VAR_PAGE, // -> LOCK_VHMAP
+    LOCK_PAGE, // -> LOCK_VHMAP
   } type;
 
   union lt_lock_data {
@@ -56,15 +55,9 @@ lock_db (void)
 }
 
 HEADER_FUNC struct lt_lock
-lock_vhmap ()
+lock_page (pgno pg)
 {
-  return lock_create (LOCK_VHMAP, (union lt_lock_data){0});
-}
-
-HEADER_FUNC struct lt_lock
-lock_var_page (pgno pg)
-{
-  return lock_create (LOCK_VAR_PAGE, (union lt_lock_data){.pg = pg});
+  return lock_create (LOCK_PAGE, (union lt_lock_data){.pg = pg});
 }
 
 #endif

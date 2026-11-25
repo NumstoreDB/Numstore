@@ -111,7 +111,7 @@ struct os_vtable
   err_t (*cond_create) (void *os_self, i_cond *dest, error *e);
   void (*cond_free) (void *os_self, void *cond_self);
   void (*cond_wait) (void *cond_self, void *mutex_self);
-  void (*cond_timed_wait) (void *cond_self, void *mutex_self, u64 msec);
+  bool (*cond_timed_wait) (void *cond_self, void *mutex_self, u64 msec);
   void (*cond_signal) (void *cond_self);
   void (*cond_broadcast) (void *cond_self);
 

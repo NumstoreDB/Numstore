@@ -77,10 +77,17 @@ err_t gr_lock_init (struct gr_lock *l, struct i_os os, error *e);
 
 void gr_lock_destroy (struct gr_lock *l);
 
-err_t gr_lock (struct gr_lock *l, enum lock_mode mode, error *e);
+err_t gr_lock (struct gr_lock *l, enum lock_mode mode, u64 msec, error *e);
+err_t gr_upgrade (struct gr_lock *l, enum lock_mode from, enum lock_mode to, u64 msec, error *e);
 void gr_unlock (struct gr_lock *l, enum lock_mode mode);
 
 const char *gr_lock_mode_name (enum lock_mode mode);
 enum lock_mode get_parent_mode (enum lock_mode child_mode);
+
+HEADER_FUNC err_t
+gr_lock_notimeout (struct gr_lock *l, enum lock_mode mode, error *e)
+{
+  return gr_lock (l, mode, 9999999999, e);
+}
 
 #endif

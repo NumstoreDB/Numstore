@@ -736,18 +736,28 @@ sys_mutex_lock (void *mutex)
   pthread_mutex_t *m = mutex;
   DBG_ASSERT (mutex, m);
 
-  const int r = pthread_mutex_lock (m);
+  int r = pthread_mutex_lock (m);
   if (r != 0) {
     switch (r) {
       case EINVAL: {
+        /**
+         * This is an invalid lock set up and should never happen
+         */
         i_log_error ("mutex_lock: invalid: %s\n", strerror (r));
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
       case EAGAIN: {
+        /**
+         * Recursive locks should never be called
+         */
         i_log_error ("mutex_lock: recursive lock: %s\n", strerror (r));
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
       case EDEADLK: {
+        /**
+         * This only errors when the same lock locks the same resource
+         * This is prevented and should not happen in the code
+         */
         i_log_error ("mutex_lock: deadlock: %s\n", strerror (r));
         UNREACHABLE (); // LCOV_EXCL_LINE
       }
@@ -765,7 +775,7 @@ sys_mutex_unlock (void *mutex)
   pthread_mutex_t *m = mutex;
   DBG_ASSERT (mutex, m);
 
-  const int r = pthread_mutex_unlock (m);
+  int r = pthread_mutex_unlock (m);
   if (r != 0) {
     switch (r) {
       case EINVAL: {
@@ -859,7 +869,7 @@ sys_cond_free (void *os_self, void *cond)
   ASSERT (os);
   DBG_ASSERT (cond, c);
 
-  const int r = pthread_cond_destroy (c);
+  int r = pthread_cond_destroy (c);
   if (r != 0) {
     switch (r) {
       case EBUSY: {
@@ -888,7 +898,7 @@ sys_cond_wait (void *cond, void *mutex)
   DBG_ASSERT (cond, c);
   DBG_ASSERT (mutex, m);
 
-  const int r = pthread_cond_wait (c, m);
+  int r = pthread_cond_wait (c, m);
   if (r != 0) {
     switch (r) {
       case EINVAL: {
@@ -907,7 +917,7 @@ sys_cond_wait (void *cond, void *mutex)
   }
 }
 
-static void
+static bool
 sys_cond_timed_wait (void *cond, void *mutex, u64 msec)
 {
   pthread_cond_t  *c = cond;
@@ -916,7 +926,7 @@ sys_cond_timed_wait (void *cond, void *mutex, u64 msec)
   DBG_ASSERT (mutex, m);
 
   struct timespec ts;
-  const int       cr = clock_gettime (CLOCK_REALTIME, &ts);
+  int             cr = clock_gettime (CLOCK_REALTIME, &ts);
   ASSERT (cr == 0);
   (void)cr;
 
@@ -927,21 +937,27 @@ sys_cond_timed_wait (void *cond, void *mutex, u64 msec)
     ts.tv_nsec -= 1000000000L;
   }
 
-  const int r = pthread_cond_timedwait (c, m, &ts);
-  if (r != 0 && r != ETIMEDOUT) {
-    switch (r) {
-      case EINVAL: {
-        i_log_error ("cond_timed_wait: invalid cond, mutex, or abstime: %s\n", strerror (r));
-        UNREACHABLE (); // LCOV_EXCL_LINE
-      }
-      case EPERM: {
-        i_log_error ("cond_timed_wait: mutex not owned by thread: %s\n", strerror (r));
-        UNREACHABLE (); // LCOV_EXCL_LINE
-      }
-      default: {
-        i_log_error ("cond_timed_wait: unknown error: %s\n", strerror (r));
-        UNREACHABLE (); // LCOV_EXCL_LINE
-      }
+  int r = pthread_cond_timedwait (c, m, &ts);
+
+  if (r == 0) {
+    return true;
+  }
+  if (r == ETIMEDOUT) {
+    return false;
+  }
+
+  switch (r) {
+    case EINVAL: {
+      i_log_error ("cond_timed_wait: invalid cond, mutex, or abstime: %s\n", strerror (r));
+      UNREACHABLE (); // LCOV_EXCL_LINE
+    }
+    case EPERM: {
+      i_log_error ("cond_timed_wait: mutex not owned by thread: %s\n", strerror (r));
+      UNREACHABLE (); // LCOV_EXCL_LINE
+    }
+    default: {
+      i_log_error ("cond_timed_wait: unknown error: %s\n", strerror (r));
+      UNREACHABLE (); // LCOV_EXCL_LINE
     }
   }
 }
@@ -952,7 +968,7 @@ sys_cond_signal (void *cond)
   pthread_cond_t *c = cond;
   DBG_ASSERT (cond, c);
 
-  const int r = pthread_cond_signal (c);
+  int r = pthread_cond_signal (c);
   if (r != 0) {
     switch (r) {
       case EINVAL: {
@@ -973,7 +989,7 @@ sys_cond_broadcast (void *cond)
   pthread_cond_t *c = cond;
   DBG_ASSERT (cond, c);
 
-  const int r = pthread_cond_broadcast (c);
+  int r = pthread_cond_broadcast (c);
   if (r != 0) {
     switch (r) {
       case EINVAL: {
@@ -1003,7 +1019,7 @@ sys_timer_create (void *os_self, i_timer *dest, error *e)
   }
 
   if (clock_gettime (CLOCK_MONOTONIC, spec) != 0) {
-    const int err = errno;
+    int err = errno;
     posix_timer_free (os, spec);
     return error_causef (e, ERR_IO, "clock_gettime: %s", strerror (err));
   }
@@ -1034,13 +1050,13 @@ sys_timer_now_ns (void *timer)
   DBG_ASSERT (timer, self);
 
   struct timespec now;
-  const int       r = clock_gettime (CLOCK_MONOTONIC, &now);
+  int             r = clock_gettime (CLOCK_MONOTONIC, &now);
   ASSERT (r == 0);
   (void)r;
 
-  const i64 sec_diff  = (i64)now.tv_sec - (i64)self->tv_sec;
-  const i64 nsec_diff = (i64)now.tv_nsec - (i64)self->tv_nsec;
-  const i64 total     = (sec_diff * 1000000000LL) + nsec_diff;
+  i64 sec_diff  = (i64)now.tv_sec - (i64)self->tv_sec;
+  i64 nsec_diff = (i64)now.tv_nsec - (i64)self->tv_nsec;
+  i64 total     = (sec_diff * 1000000000LL) + nsec_diff;
   ASSERT (total >= 0); // monotonic clock
 
   return (u64)total;
@@ -1050,7 +1066,7 @@ sys_timer_now_ns (void *timer)
 /// Sleep
 
 void
-i_sleep_us (const u64 us)
+i_sleep_us (u64 us)
 {
   struct timespec ts = {
       .tv_sec  = (time_t)(us / 1000000ULL),
@@ -1073,7 +1089,7 @@ i_once_run (i_once *once, void (*fn) (void))
   ASSERT (once);
   ASSERT (fn);
 
-  const int r = pthread_once (once, fn);
+  int r = pthread_once (once, fn);
   ASSERT (r == 0);
   (void)r;
 }

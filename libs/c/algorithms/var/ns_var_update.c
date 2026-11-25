@@ -45,6 +45,13 @@ ns_var_update_by_var_root (
 
   page_h cur = page_h_create ();
 
+#ifdef EXPERIMENTAL_HIERARCHIAL_TXNS
+  // Lock the variable hash table
+  if (lockt_lock (p->lt, lock_page (root), LM_X, tx, e) < 0) {
+    goto failed;
+  }
+#endif
+
   if (pgr_get_writable (&cur, tx, PG_VAR_PAGE, root, p, e) < 0) {
     goto failed;
   }

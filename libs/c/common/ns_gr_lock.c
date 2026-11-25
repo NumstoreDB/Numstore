@@ -20,10 +20,6 @@
 #include "ns_testing.h"
 #include "os/ns_os.h"
 
-#ifndef NDEBUG
-#  include "ns_logging.h"
-#endif
-
 #include <stdint.h>
 #include <string.h>
 
@@ -167,7 +163,7 @@ TEST (gr_lock_is_compatible)
   test_assert (is_compatible (&l, LM_X));
 
   // IS is incompatible with X
-  gr_lock (&l, LM_IS, &ctx->e);
+  gr_lock_notimeout (&l, LM_IS, &ctx->e);
   test_assert (is_compatible (&l, LM_IS));
   test_assert (is_compatible (&l, LM_IX));
   test_assert (is_compatible (&l, LM_S));
@@ -176,7 +172,7 @@ TEST (gr_lock_is_compatible)
   gr_unlock (&l, LM_IS);
 
   // IX is incompatible with S SIX X
-  gr_lock (&l, LM_IX, &ctx->e);
+  gr_lock_notimeout (&l, LM_IX, &ctx->e);
   test_assert (is_compatible (&l, LM_IS));
   test_assert (is_compatible (&l, LM_IX));
   test_assert (!is_compatible (&l, LM_S));
@@ -185,7 +181,7 @@ TEST (gr_lock_is_compatible)
   gr_unlock (&l, LM_IX);
 
   // S is incompatible with IX SIX X
-  gr_lock (&l, LM_S, &ctx->e);
+  gr_lock_notimeout (&l, LM_S, &ctx->e);
   test_assert (is_compatible (&l, LM_IS));
   test_assert (!is_compatible (&l, LM_IX));
   test_assert (is_compatible (&l, LM_S));
@@ -194,7 +190,7 @@ TEST (gr_lock_is_compatible)
   gr_unlock (&l, LM_S);
 
   // SIX is incompatible with IX S SIX X
-  gr_lock (&l, LM_SIX, &ctx->e);
+  gr_lock_notimeout (&l, LM_SIX, &ctx->e);
   test_assert (is_compatible (&l, LM_IS));
   test_assert (!is_compatible (&l, LM_IX));
   test_assert (!is_compatible (&l, LM_S));
@@ -203,7 +199,7 @@ TEST (gr_lock_is_compatible)
   gr_unlock (&l, LM_SIX);
 
   // X is incompatible with IS IX S SIX X
-  gr_lock (&l, LM_X, &ctx->e);
+  gr_lock_notimeout (&l, LM_X, &ctx->e);
   test_assert (!is_compatible (&l, LM_IS));
   test_assert (!is_compatible (&l, LM_IX));
   test_assert (!is_compatible (&l, LM_S));
@@ -215,68 +211,147 @@ TEST (gr_lock_is_compatible)
 }
 #endif
 
-err_t
-gr_lock (struct gr_lock *l, const enum lock_mode mode, error *e)
+static err_t
+lock_waiter_append (struct gr_lock *l, struct gr_lock_waiter *waiter, enum lock_mode mode, error *e)
 {
-  l->mutex.table->mutex_lock (l->mutex.self);
-  DBG_ASSERT (gr_lock, l);
+  waiter->mode = mode;
+  waiter->prev = NULL;
+  waiter->next = NULL;
 
-  // If it's compatible - just increment mode count and move on
-  if (is_compatible (l, mode)) {
-    TEST_MARK ("gr_lock:gr_lock:immediate_acquire");
-    goto acquire;
-  }
-
-  // Otherwise, we need to create a new lock waiter
-  struct gr_lock_waiter waiter = {
-      .mode = mode,
-      .prev = NULL,
-      .next = NULL,
-  };
-  if (l->os.table->cond_create (l->os.self, &waiter.cond, e) < 0) {
-    // Ok here - we just failed and everything is unlocked
-    l->mutex.table->mutex_unlock (l->mutex.self);
+  // Create a new condition variable
+  if (l->os.table->cond_create (l->os.self, &waiter->cond, e) < 0) {
     return error_trace (e);
   }
 
   // Append waiter to the linked list of waiters
   if (l->head == NULL) {
-    l->head = &waiter;
+    l->head = waiter;
   } else {
     struct gr_lock_waiter *end = l->head;
     while (end->next != NULL) {
       end = end->next;
     }
 
-    end->next   = &waiter;
-    waiter.prev = end;
+    end->next    = waiter;
+    waiter->prev = end;
   }
 
-  // Wait for someone to signal my condition variable - main wait code
-  while (!is_compatible (l, mode)) {
-    TEST_MARK ("gr_lock:gr_lock:wait");
-    waiter.cond.table->cond_wait (waiter.cond.self, l->mutex.self);
-  }
+  return SUCCESS;
+}
+
+static void
+lock_waiter_remove (struct gr_lock *l, struct gr_lock_waiter *waiter)
+{
 
   // Remove from waiters list
-  if (waiter.prev != NULL) {
-    waiter.prev->next = waiter.next;
+  if (waiter->prev != NULL) {
+    waiter->prev->next = waiter->next;
   } else {
-    ASSERT (l->head == &waiter);
-    l->head = waiter.next;
+    ASSERT (l->head == waiter);
+    l->head = waiter->next;
   }
-  if (waiter.next != NULL) {
-    waiter.next->prev = waiter.prev;
+  if (waiter->next != NULL) {
+    waiter->next->prev = waiter->prev;
   }
 
   // Release resources
-  l->os.table->cond_free (l->os.self, waiter.cond.self);
+  l->os.table->cond_free (l->os.self, waiter->cond.self);
+}
 
-acquire:
-  l->holder_counts[mode]++;
+err_t
+gr_lock (struct gr_lock *l, const enum lock_mode mode, u64 msec, error *e)
+{
+  l->mutex.table->mutex_lock (l->mutex.self);
   DBG_ASSERT (gr_lock, l);
-  l->mutex.table->mutex_unlock (l->mutex.self);
-  return SUCCESS;
+
+  // Fast path - just acquire and move on (so we don't need
+  // to initialize a condition unnecessarily)
+  if (is_compatible (l, mode)) {
+    TEST_MARK ("gr_lock:gr_lock:immediate_acquire");
+    l->holder_counts[mode]++;
+    l->mutex.table->mutex_unlock (l->mutex.self);
+    return SUCCESS;
+  }
+
+  // Create a waiter on the stack and wait until
+  // the lock is compatible
+  bool timedout = false;
+  {
+    // Create a new lock waiter
+    struct gr_lock_waiter waiter;
+    if (lock_waiter_append (l, &waiter, mode, e) < 0) {
+      l->mutex.table->mutex_unlock (l->mutex.self);
+      return error_trace (e);
+    }
+
+    // Wait for someone to signal my condition variable - main wait code
+    while (!timedout && !is_compatible (l, waiter.mode)) {
+      TEST_MARK ("gr_lock:gr_lock:wait");
+      timedout = !waiter.cond.table->cond_timed_wait (waiter.cond.self, l->mutex.self, msec);
+    }
+
+    // Wait until the lock is compatible
+    lock_waiter_remove (l, &waiter);
+  }
+
+  if (!timedout) {
+    l->holder_counts[mode]++;
+    l->mutex.table->mutex_unlock (l->mutex.self);
+    return SUCCESS;
+  } else {
+    l->mutex.table->mutex_unlock (l->mutex.self);
+    return error_causef (e, ERR_TIMEDOUT, "Timed out on gr_lock");
+  }
+}
+
+err_t
+gr_upgrade (struct gr_lock *l, enum lock_mode from, enum lock_mode to, u64 msec, error *e)
+{
+  ASSERT (to > from);
+
+  l->mutex.table->mutex_lock (l->mutex.self);
+  DBG_ASSERT (gr_lock, l);
+
+  // Check if it's compatible if we just decrement from once
+  l->holder_counts[from]--;
+  if (is_compatible (l, to)) {
+    l->holder_counts[to]++;
+    l->mutex.table->mutex_unlock (l->mutex.self);
+    return SUCCESS;
+  }
+
+  bool timedout;
+  {
+    // Create a new lock waiter
+    struct gr_lock_waiter waiter;
+    if (lock_waiter_append (l, &waiter, to, e) < 0) {
+      l->holder_counts[from]++;
+      l->mutex.table->mutex_unlock (l->mutex.self);
+      return error_trace (e);
+    }
+
+    // Wait for someone to signal my condition variable - main wait code
+    while (!timedout && !is_compatible (l, to)) {
+
+      // Keep this lock while waiting to protect from other locks
+      l->holder_counts[from]++;
+      timedout = waiter.cond.table->cond_timed_wait (waiter.cond.self, l->mutex.self, msec);
+
+      // Decrement this before testing is_compatible
+      l->holder_counts[from]--;
+    }
+
+    lock_waiter_remove (l, &waiter);
+  }
+
+  if (!timedout) {
+    l->holder_counts[to]++;
+    l->mutex.table->mutex_unlock (l->mutex.self);
+    return SUCCESS;
+  } else {
+    l->mutex.table->mutex_unlock (l->mutex.self);
+    return error_causef (e, ERR_TIMEDOUT, "Timed out on gr_upgrade");
+  }
 }
 
 void
@@ -320,7 +395,7 @@ thread1 (void *_ctx)
   }
 
   // This should pass through
-  gr_lock (ctx->l, ctx->mode1, NULL);
+  gr_lock_notimeout (ctx->l, ctx->mode1, NULL);
 
   atomic_store (&ctx->locked1, 1);
 
@@ -342,7 +417,7 @@ thread2 (void *_ctx)
   }
 
   // This is the lock query in question
-  gr_lock (ctx->l, ctx->mode2, NULL);
+  gr_lock_notimeout (ctx->l, ctx->mode2, NULL);
 
   atomic_store (&ctx->locked2, 1);
 
@@ -440,8 +515,6 @@ gr_lock_mode_name (const enum lock_mode mode)
 }
 
 #ifndef NDEBUG
-// Asserted rather than logged: i_log_info is ((void)0) below LOG_INFO, which
-// discards its arguments, so a logged call would not even evaluate the name.
 TEST (gr_lock_mode_name)
 {
   TEST_CASE ("Every mode has its own name")
@@ -561,7 +634,7 @@ thread_hold_and_signal (void *arg)
   error                 e   = error_create ();
 
   // Secure the lock first
-  gr_lock (ctx->lock, ctx->mode1, &e);
+  gr_lock_notimeout (ctx->lock, ctx->mode1, &e);
 
   // Signal to Thread 2 that the lock is held
   ctx->gate_mtx.table->mutex_lock (ctx->gate_mtx.self);
@@ -611,7 +684,7 @@ thread_wait_and_try (void *arg)
 
   // Attempt acquisition (will block if incompatible)
   ctx->t2_blocked = 1;
-  gr_lock (ctx->lock, ctx->mode2, &e);
+  gr_lock_notimeout (ctx->lock, ctx->mode2, &e);
 
   ctx->t2_acquired = 1;
   ctx->t2_blocked  = 0;
@@ -632,7 +705,7 @@ random_stress_worker (void *arg)
     seed                = (seed * 1103515245) + 12345;
     enum lock_mode mode = (seed % LM_COUNT);
 
-    gr_lock (ctx->lock, mode, &e);
+    gr_lock_notimeout (ctx->lock, mode, &e);
 
     // If Exclusive or Shared-Intent-Exclusive, verify atomicity
     if (mode == LM_X || mode == LM_SIX) {
@@ -658,7 +731,7 @@ TEST (gr_lock_basic_sanity)
   gr_lock_init (&lock, ctx->os, &ctx->e);
 
   for (int mode = 0; mode < LM_COUNT; mode++) {
-    gr_lock (&lock, mode, &ctx->e);
+    gr_lock_notimeout (&lock, mode, &ctx->e);
     test_assert_equal (lock.holder_counts[mode], 1);
     gr_unlock (&lock, mode);
     test_assert_equal (lock.holder_counts[mode], 0);
@@ -796,7 +869,7 @@ TEST (gr_lock_init_fail_os)
   while (ret != SUCCESS);
 
   // The lock works after the failures
-  test_err_t_check (gr_lock (&l, LM_X, &ctx->e), SUCCESS, &ctx->e);
+  test_err_t_check (gr_lock_notimeout (&l, LM_X, &ctx->e), SUCCESS, &ctx->e);
   gr_unlock (&l, LM_X);
   gr_lock_destroy (&l);
 }
@@ -807,11 +880,11 @@ TEST (gr_lock_fail_waiter_cond)
   test_err_t_check (gr_lock_init (&l, ctx->faulty_os, &ctx->e), SUCCESS, &ctx->e);
 
   // Hold X so the next X request has to build a waiter
-  test_err_t_check (gr_lock (&l, LM_X, &ctx->e), SUCCESS, &ctx->e);
+  test_err_t_check (gr_lock_notimeout (&l, LM_X, &ctx->e), SUCCESS, &ctx->e);
 
   // Only the first OS call can fail here - a later one would block forever
   faulty_os_fail_after (ctx->faulty_os, 0);
-  err_t ret = gr_lock (&l, LM_X, &ctx->e);
+  err_t ret = gr_lock_notimeout (&l, LM_X, &ctx->e);
   faulty_os_reset (ctx->faulty_os);
 
   test_assert (ret != SUCCESS);
@@ -820,7 +893,7 @@ TEST (gr_lock_fail_waiter_cond)
   // The failed waiter left nothing behind: the lock is still usable
   test_assert_ptr_equal (l.head, NULL);
   gr_unlock (&l, LM_X);
-  test_err_t_check (gr_lock (&l, LM_S, &ctx->e), SUCCESS, &ctx->e);
+  test_err_t_check (gr_lock_notimeout (&l, LM_S, &ctx->e), SUCCESS, &ctx->e);
   gr_unlock (&l, LM_S);
   gr_lock_destroy (&l);
 }

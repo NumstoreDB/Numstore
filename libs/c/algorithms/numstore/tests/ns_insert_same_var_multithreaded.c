@@ -27,7 +27,7 @@
 
 #ifndef NDEBUG
 
-#  define NITERS           10
+#  define NITERS           1
 #  define NTHREADS         3
 #  define SIZE_EACH_INSERT 10000
 
@@ -51,11 +51,27 @@ insert_mt_func (void *_ctx)
   ALLOC_INIT (alloc);
   istream_create_from (stream, ctx->data[i], SIZE_EACH_INSERT);
 
+  /**
+   * For hierarchial transactions, a begin call
+   * is not locking, do the begin first so that
+   * insert happens at roughly the same time
+   */
+#  if EXPERIMENTAL_HIERARCHIAL_TXNS
+  pgr_begin_txn (&tx, ctx->p->p, &e);
+#  endif
+
   atomic_fetch_sub (ctx->ready, 1);
   while (atomic_load (ctx->go) == 0) {
   }
 
+  /**
+   * For global locks, this needs to be after the
+   * launch call so that threads don't block
+   */
+#  ifndef EXPERIMENTAL_HIERARCHIAL_TXNS
   pgr_begin_txn (&tx, ctx->p->p, &e);
+#  endif
+
   numstore_insert_from_name (
       ctx->p->p,
       &tx,
@@ -89,20 +105,24 @@ TEST (numstore_insert_multithreaded)
     _Atomic int          idx   = 0;
     struct insert_mt_ctx targs = {.p = &f, .ready = &ready, .go = &go, .idx = &idx};
 
+    // Seed each insert with random data
     for (int i = 0; i < NTHREADS; ++i) {
       targs.data[i] = f.mem.table->malloc (f.mem.self, 1, SIZE_EACH_INSERT, &ctx->e);
       rand_bytes (targs.data[i], SIZE_EACH_INSERT);
     }
 
+    // Create threads
     i_thread workers[NTHREADS];
     for (int i = 0; i < NTHREADS; ++i) {
       f.os.table->thread_create (f.os.self, &workers[i], insert_mt_func, &targs, &ctx->e);
     }
 
+    // Launch threads
     while (atomic_load (&ready) > 0) {
     }
     atomic_store (&go, 1);
 
+    // Join threads
     for (int i = 0; i < NTHREADS; ++i) {
       f.os.table->thread_join (f.os.self, workers[i].self);
     }

@@ -538,7 +538,7 @@ faulty_cond_wait (void *cond, void *mutex)
   c->d.table->cond_wait (c->d.self, m->d.self);
 }
 
-static void
+static bool
 faulty_cond_timed_wait (void *cond, void *mutex, u64 msec)
 {
   struct faulty_cond  *c = cond;
@@ -547,7 +547,7 @@ faulty_cond_timed_wait (void *cond, void *mutex, u64 msec)
   DBG_ASSERT (faulty_mutex, m);
   ASSERT (c->ctx == m->ctx);
 
-  c->d.table->cond_timed_wait (c->d.self, m->d.self, msec);
+  return c->d.table->cond_timed_wait (c->d.self, m->d.self, msec);
 }
 
 static void

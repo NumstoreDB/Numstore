@@ -42,6 +42,11 @@ pgr_begin_txn (struct txn *tx, struct pager *p, error *e)
       p->mem
   );
 
+  /**
+   * In global locking mode, each transaction obtains
+   * a global exclusive database lock and releases
+   * on commit or rollback
+   */
 #ifndef EXPERIMENTAL_HIERARCHIAL_TXNS
   if (lockt_lock (p->lt, lock_db (), LM_X, tx, e) < 0) {
     // Failing here is fine - just couldn't acquire a lock

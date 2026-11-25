@@ -57,6 +57,8 @@ struct txn
   struct txn_lock  *locks;
   struct slab_alloc lock_alloc;
   latch             l;
+
+  bool              write_intent;
 };
 
 DEFINE_DBG_ASSERT (struct txn, ns_txn, t, {

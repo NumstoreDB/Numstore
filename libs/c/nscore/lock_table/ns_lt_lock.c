@@ -29,11 +29,10 @@ lt_lock_key (const struct lt_lock lock)
   hcodelen += memcpy_inc (&hcode[hcodelen], &_type, sizeof (_type));
 
   switch (lock.type) {
-    case LOCK_DB:
-    case LOCK_VHMAP: {
+    case LOCK_DB: {
       break;
     }
-    case LOCK_VAR_PAGE: {
+    case LOCK_PAGE: {
       pgno pg = lock.data.pg;
       hcodelen += memcpy_inc (&hcode[hcodelen], &pg, sizeof (pg));
       break;
@@ -58,12 +57,8 @@ get_parent (struct lt_lock *parent, const struct lt_lock lock)
     case LOCK_DB: {
       return false;
     }
-    case LOCK_VHMAP: {
+    case LOCK_PAGE: {
       *parent = lock_db ();
-      return true;
-    }
-    case LOCK_VAR_PAGE: {
-      *parent = lock_vhmap ();
       return true;
     }
   }
@@ -79,11 +74,10 @@ lt_lock_equal (const struct lt_lock left, const struct lt_lock right)
   }
 
   switch (left.type) {
-    case LOCK_DB:
-    case LOCK_VHMAP: {
+    case LOCK_DB: {
       return true;
     }
-    case LOCK_VAR_PAGE: {
+    case LOCK_PAGE: {
       return left.data.pg == right.data.pg;
     }
   }

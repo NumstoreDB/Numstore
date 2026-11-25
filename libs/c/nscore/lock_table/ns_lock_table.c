@@ -20,8 +20,8 @@
 #include "ns_gr_lock.h"
 #include "ns_htable.h"
 #include "ns_latch.h"
+#include "ns_numerics.h"
 #include "ns_utils.h"
-#include "txn_table/ns_txn_table.h"
 
 #include <string.h>
 
@@ -183,6 +183,8 @@ get_frame_unsafe_expect (struct lockt *t, struct lt_lock lock)
 }
 #endif
 
+#define LOCK_TIMEOUT_MS 1000
+
 static err_t
 lockt_lock_once (
     struct lockt        *t,
@@ -193,31 +195,34 @@ lockt_lock_once (
 )
 {
   latch_lock (&t->l);
+  int uuid = randu32 ();
 
 #ifdef EXPERIMENTAL_HIERARCHIAL_TXNS
+  /**
+   * Handle the case where this lock already exists on
+   * this transaction
+   */
   if (tx) {
     struct txn_lock *l = txn_get_lock_unsafe (tx, lock);
 
-    // lock already exists in transaction
     if (l) {
-      // Mode already matches
-      if (l->mode == mode) {
+
+      // We already hold this lock or greater
+      if (l->mode >= mode) {
         latch_unlock (&t->l);
         return SUCCESS;
       }
 
-      // Need to upgrade lock
+      // Upgrade lock mode
       struct lockt_frame *frame = get_frame_unsafe_expect (t, lock);
-      gr_unlock (&frame->lock, l->mode);
-      if (gr_lock (&frame->lock, mode, e)) {
-        panic ("TODO");
+      if (gr_upgrade (&frame->lock, l->mode, mode, LOCK_TIMEOUT_MS, e) < 0) {
         latch_unlock (&t->l);
         return error_trace (e);
       }
 
       l->mode = mode;
       latch_unlock (&t->l);
-      return error_trace (e);
+      return SUCCESS;
     }
   }
 #endif
@@ -243,7 +248,7 @@ lockt_lock_once (
   // immediately have to wait. But that's ok, the frame creation was
   // just so we can find it and representative of a read
 
-  if (gr_lock (&frame->lock, mode, e) < 0) {
+  if (gr_lock (&frame->lock, mode, LOCK_TIMEOUT_MS, e) < 0) {
     // This race is hard to test - between locking, and unreffing
     // but seems fine
     latch_lock (&t->l);
@@ -363,12 +368,8 @@ i_log_lockt_entry (struct hnode *node, void *ctx)
       i_log (*log_level, "LOCK_DB\n");
       break;
     }
-    case LOCK_VHMAP: {
-      i_log (*log_level, "LOCK_VHMAP\n");
-      break;
-    }
-    case LOCK_VAR_PAGE: {
-      i_log (*log_level, "LOCK_VAR_PAGE: %" PRpgno "\n", frame->key.data.pg);
+    case LOCK_PAGE: {
+      i_log (*log_level, "LOCK_PAGE: %" PRpgno "\n", frame->key.data.pg);
       break;
     }
   }

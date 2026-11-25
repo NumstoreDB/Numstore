@@ -13,7 +13,6 @@
 /// limitations under the License.
 
 #include "ns_arena_alloc.h"
-#include "ns_bounds.h"
 #include "ns_csx_assert.h"
 #include "ns_error.h"
 #include "ns_stream.h"
@@ -53,6 +52,7 @@ numstore_insert_from_name (
   if (var == NULL) {
     var = &_var;
   }
+
   if (numstore_get (p, tx, false, vname, valloc, var, e) < 0) {
     return error_trace (e);
   }

@@ -122,7 +122,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
 #ifdef EXPERIMENTAL_HIERARCHIAL_TXNS
   // Lock the variable hash table
   enum lock_mode mode = writable ? LM_X : LM_S;
-  if (lockt_lock (pms->p->lt, lock_vhmap (), mode, pms->tx, e) < 0) {
+  if (lockt_lock (pms->p->lt, lock_page (VHASH_PGNO), mode, pms->tx, e) < 0) {
     goto failed;
   }
 #endif
@@ -173,7 +173,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
 
 #ifdef EXPERIMENTAL_HIERARCHIAL_TXNS
     // Lock (variable)
-    if (lockt_lock (pms->p->lt, lock_var_page (head), mode, pms->tx, e) < 0) {
+    if (lockt_lock (pms->p->lt, lock_page (head), mode, pms->tx, e) < 0) {
       goto failed;
     }
 #endif
@@ -274,7 +274,7 @@ ns_find_var_page (struct ns_find_var_page_params *pms, error *e)
 
           // Lock (variable)
 #ifdef EXPERIMENTAL_HIERARCHIAL_TXNS
-          if (lockt_lock (pms->p->lt, lock_var_page (next), mode, pms->tx, e) < 0) {
+          if (lockt_lock (pms->p->lt, lock_page (next), mode, pms->tx, e) < 0) {
             goto failed;
           }
 #endif

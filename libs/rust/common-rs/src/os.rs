@@ -23,6 +23,7 @@ pub struct Os<'a> {
     _deps: PhantomData<&'a ()>,
 }
 
+// A function to open a file
 type OpenFn = unsafe extern "C" fn(*mut c_void, *mut i_file, *const c_char, *mut error) -> err_t;
 
 impl<'a> Os<'a> {

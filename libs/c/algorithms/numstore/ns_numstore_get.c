@@ -15,7 +15,6 @@
 #include "ns_csx_assert.h"
 #include "ns_error.h"
 #include "numstore/ns_numstore_algorithms.h"
-#include "txn_table/ns_txn_table.h"
 #include "types/ns_variables.h"
 #include "var/ns_var_algorithms.h"
 

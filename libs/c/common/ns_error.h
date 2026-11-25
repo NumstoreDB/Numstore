@@ -49,9 +49,10 @@ enum err_code
   ERR_UNHANDLED                  = -13,
   ERR_TOO_MANY_FILES             = -14,
   ERR_TOO_MANY_THREADS           = -15,
+  ERR_TIMEDOUT                   = -16,
 
 #ifndef NDEBUG
-  ERR_CRASHED = -16,
+  ERR_CRASHED = -17,
 #endif
 };
 
